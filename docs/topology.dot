@@ -34,13 +34,14 @@ digraph Turing {
     ph2 [label=<<table border="1" color="#2f6f52" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="6"><tr><td><font color="#8fd9b6" point-size="10"><b>🍓 pihole2 · .181</b>  BACKUP</font></td></tr></table>>];
     ph1 -> ph2 [label="nebula-sync", style=dashed, color="#2f6f52", fontcolor="#6ee7b7"];
   }
-  ws [label=<<table border="2" color="#a3e635" bgcolor="#151a0d" cellborder="0" cellspacing="0" cellpadding="7">
+  ws [label=<<table border="2" color="#a3e635" bgcolor="#151a0d" cellborder="0" cellspacing="0" cellpadding="8">
       <tr><td align="left"><font color="#bef264" point-size="12"><b>🎮  Workstation · .110</b></font></td></tr>
-      <tr><td align="left"><font color="#9ca86b" point-size="9">RTX 5090 (32 GB Blackwell) · 9800X3D<br align="left"/>Ollama LLM API — GPU-as-a-service</font></td></tr></table>>];
+      <tr><td align="left"><font color="#d9f99d" point-size="9"><b>RTX 5090 · 32 GB GDDR7 (Blackwell)</b></font></td></tr>
+      <tr><td align="left"><font color="#9ca86b" point-size="9">Ryzen 7 9800X3D (8C/16T) · 64 GB DDR5-6000<br align="left"/>2× 2 TB NVMe · Win 11 Pro<br align="left"/>Ollama LLM API — GPU-as-a-service</font></td></tr></table>>];
 
   /* ============ PHYSICAL NODES ============ */
   subgraph cluster_nodes {
-    label=<<font color="#22d3ee" point-size="14"><b>  🖧 TURING PI 2 BOARD + NUC — K3s NODES  </b></font>>; labeljust=l;
+    label=<<font color="#22d3ee" point-size="14"><b>  🧱 TURING PI 2 BOARD + NUC — K3s NODES  </b></font>>; labeljust=l;
     style="rounded,filled"; fillcolor="#0a1526"; color="#0e7490"; penwidth=2.2;
     bmc [label=<<table border="1" color="#475569" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="6">
         <tr><td align="left"><font color="#94a3b8" point-size="10"><b>🔌 BMC · .100</b></font></td></tr>

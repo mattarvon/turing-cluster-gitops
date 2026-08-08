@@ -1,40 +1,81 @@
-digraph TuringPi2 {
-  rankdir=TB;
-  graph [fontname="Helvetica", fontsize=11, bgcolor="white", nodesep=0.3, ranksep=0.45, pad=0.25];
-  node  [fontname="Helvetica", fontsize=9, shape=box, style="rounded,filled", color="#33475b", penwidth=1.1];
-  edge  [fontname="Helvetica", fontsize=8, color="#5b7085"];
+digraph TuringArch {
+  rankdir=TB; compound=true; splines=spline;
+  bgcolor="#0a0e1a";
+  graph [fontname="DejaVu Sans", fontsize=24, labelloc=t, fontcolor="#e8f0ff",
+         label=<<b>🧱 PHYSICAL ARCHITECTURE — Turing Pi 2 + Peripherals</b><br/><font point-size="11" color="#7c8db5">on-board GbE switch · single uplink · everything static on 192.168.1.0/24</font>>,
+         nodesep=0.4, ranksep=0.6, pad=0.5];
+  node [shape=plaintext, fontname="DejaVu Sans"];
+  edge [fontname="DejaVu Sans", fontsize=9, color="#3d4b6b", penwidth=1.3, arrowsize=0.7];
 
-  internet [label="Internet", shape=ellipse, fillcolor="#dfe7ef"];
-  router   [label="AmpliFi Router / Gateway\n192.168.1.1", fillcolor="#d6e4ff"];
-  pihole [label="Pi-hole DNS (pihole)\n192.168.1.180\nRPi 3 / Debian 13", fillcolor="#e3f4e3"];
-  nuc    [label="NUC (nuc-flasher)\n192.168.1.105\nUbuntu 20.04", fillcolor="#efe6f6"];
-  work   [label="Workstation\nWin 11 / kubectl", fillcolor="#eef2f7"];
+  internet [label=<<table border="1" color="#3d4b6b" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="7"><tr><td><font color="#9fb3d9" point-size="12"><b>🌐  Internet</b></font></td></tr></table>>];
+  router   [label=<<table border="2" color="#38bdf8" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#38bdf8" point-size="12"><b>📡  AmpliFi Router · .1</b></font></td></tr>
+      <tr><td align="left"><font color="#7c8db5" point-size="9">gateway · DHCP · DNS → Pi-hole</font></td></tr></table>>];
 
+  /* ---- Workstation + RTX 5090 (headline peripheral) ---- */
+  work [label=<<table border="3" color="#a3e635" bgcolor="#151a0d" cellborder="0" cellspacing="0" cellpadding="10">
+      <tr><td align="left"><font color="#bef264" point-size="15"><b>🎮  WORKSTATION · .110</b></font></td></tr>
+      <tr><td align="left"><font color="#d9f99d" point-size="11"><b>⚡ GPU:</b> NVIDIA RTX 5090 · 32 GB GDDR7 (Blackwell)</font></td></tr>
+      <tr><td align="left"><font color="#c7d99d" point-size="10"><b>CPU:</b> AMD Ryzen 7 9800X3D (8C / 16T)</font></td></tr>
+      <tr><td align="left"><font color="#c7d99d" point-size="10"><b>RAM:</b> 64 GB DDR5-6000</font></td></tr>
+      <tr><td align="left"><font color="#c7d99d" point-size="10"><b>Storage:</b> 2× 2 TB NVMe SSD</font></td></tr>
+      <tr><td align="left"><font color="#c7d99d" point-size="10"><b>OS:</b> Windows 11 Pro</font></td></tr>
+      <tr><td align="left"><font color="#9ca86b" point-size="9">Role: Ollama LLM host — GPU-as-a-service · kubectl admin</font></td></tr></table>>];
+
+  /* ---- Redundant Pi-hole DNS ---- */
+  ph1 [label=<<table border="2" color="#34d399" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#6ee7b7" point-size="12"><b>🍓 pihole · .180</b></font></td></tr>
+      <tr><td align="left"><font color="#8fd9b6" point-size="9">RPi 3 · Pi-hole DNS PRIMARY</font></td></tr></table>>];
+  ph2 [label=<<table border="1" color="#2f6f52" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#8fd9b6" point-size="11"><b>🍓 pihole2 · .181</b></font></td></tr>
+      <tr><td align="left"><font color="#6f9a86" point-size="9">RPi 3 · DNS BACKUP (nebula-sync)</font></td></tr></table>>];
+
+  /* ---- The NUC ---- */
+  nuc [label=<<table border="3" color="#a78bfa" bgcolor="#17122e" cellborder="0" cellspacing="0" cellpadding="9">
+      <tr><td align="left"><font color="#c4b5fd" point-size="14"><b>🖥  INTEL NUC · .105</b></font></td></tr>
+      <tr><td align="left"><font color="#a99cd6" point-size="10">i7-8559U + Iris Plus 655 · 31 GB · amd64</font></td></tr>
+      <tr><td align="left"><font color="#8f80c0" point-size="9">K3s worker · NFS server (458 GB RWX) · KubeVirt VM host · flash host</font></td></tr></table>>];
+
+  /* ---- The Turing Pi 2 board ---- */
   subgraph cluster_tp2 {
-    label="Turing Pi 2 (v2.4) — Mini-ITX cluster board";
-    fontname="Helvetica"; fontsize=11; style="rounded,filled"; fillcolor="#f6f5f1"; color="#b9b6ad"; penwidth=1.4;
-    sw  [label="On-board Gigabit switch  (single RJ45 uplink)", fillcolor="#fff3d6", fontsize=8];
-    bmc [label="BMC (turingpi)\n192.168.1.100 · fw v2.0.5", fillcolor="#fde3cf"];
-    cp  [label="Node 1 · rk1-cp\nRK3588 16GB · Ubuntu 22.04\n192.168.1.101\n★ K3s CONTROL PLANE (v1.36.2)", fillcolor="#cfe0ff"];
-    jet [label="Node 2 · jetson-gpu\nJetson TX2 NX · L4T 18.04\n192.168.1.102\n★ GPU WORKER (v1.34.9 · gpu=true)", fillcolor="#ffd9d9"];
-    w1  [label="Node 3 · rk1-w1\nRK3588 16GB · Ubuntu 22.04\n192.168.1.103\nK3s worker (v1.36.2)", fillcolor="#e4ebf7"];
-    w2  [label="Node 4 · rk1-w2\nRK3588 16GB · Ubuntu 22.04\n192.168.1.104\nK3s worker (v1.36.2)", fillcolor="#e4ebf7"];
-    sw -> bmc [color="#b9b6ad"];
-    sw -> cp  [color="#b9b6ad"];
-    sw -> jet [color="#b9b6ad"];
-    sw -> w1  [color="#b9b6ad"];
-    sw -> w2  [color="#b9b6ad"];
+    label=<<font color="#22d3ee" point-size="15"><b>  🔲 TURING PI 2 (v2.4) — Mini-ITX cluster board  </b></font>>; labeljust=l;
+    style="rounded,filled"; fillcolor="#0a1526"; color="#0e7490"; penwidth=2.4;
+    sw [label=<<table border="1" color="#f59e0b" bgcolor="#241a09" cellborder="0" cellspacing="0" cellpadding="7"><tr><td><font color="#fcd34d" point-size="10"><b>⇄ On-board Gigabit switch</b>  (single RJ45 uplink)</font></td></tr></table>>];
+    bmc [label=<<table border="1" color="#475569" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#94a3b8" point-size="11"><b>🔌 BMC (turingpi) · .100</b></font></td></tr>
+        <tr><td align="left"><font color="#64748b" point-size="8">fw v2.0.5 · power · flash · UART</font></td></tr></table>>];
+    cp [label=<<table border="2" color="#22d3ee" bgcolor="#08283a" cellborder="0" cellspacing="0" cellpadding="8">
+        <tr><td align="left"><font color="#67e8f9" point-size="12"><b>N1 · ⭐ rk1-cp · .101</b></font></td></tr>
+        <tr><td align="left"><font color="#7dd3e8" point-size="9">RK3588 · 16 GB · arm64<br align="left"/>K3s CONTROL PLANE (v1.36.2)</font></td></tr></table>>];
+    jet [label=<<table border="2" color="#fb7185" bgcolor="#2a1015" cellborder="0" cellspacing="0" cellpadding="8">
+        <tr><td align="left"><font color="#fda4af" point-size="12"><b>N2 · 🧠 jetson-gpu · .102</b></font></td></tr>
+        <tr><td align="left"><font color="#e79aa5" point-size="9">Jetson TX2 NX · 256-core Pascal<br align="left"/>GPU WORKER · nvidia.com/gpu (v1.34.9)</font></td></tr></table>>];
+    w1 [label=<<table border="1" color="#3b82f6" bgcolor="#0d1b33" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#93c5fd" point-size="11"><b>N3 · rk1-w1 · .103</b></font></td></tr>
+        <tr><td align="left"><font color="#7c9cc9" point-size="8">RK3588 · 16 GB · arm64 · worker</font></td></tr></table>>];
+    w2 [label=<<table border="1" color="#3b82f6" bgcolor="#0d1b33" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#93c5fd" point-size="11"><b>N4 · rk1-w2 · .104</b></font></td></tr>
+        <tr><td align="left"><font color="#7c9cc9" point-size="8">RK3588 · 16 GB · arm64 · worker</font></td></tr></table>>];
+    sw -> bmc [color="#0e7490"];
+    sw -> cp  [color="#0e7490"];
+    sw -> jet [color="#0e7490"];
+    sw -> w1  [color="#0e7490"];
+    sw -> w2  [color="#0e7490"];
     {rank=same; cp; jet;}
     {rank=same; w1; w2;}
   }
 
-  internet -> router;
-  router -> sw [label="LAN"];
-  router -> pihole;
-  router -> nuc;
-  router -> work;
+  internet -> router [color="#38bdf8", penwidth=1.6];
+  router -> sw   [label="LAN", color="#0e7490", penwidth=1.8, lhead=cluster_tp2];
+  router -> nuc  [color="#6d28d9"];
+  router -> work [color="#65a30d"];
+  router -> ph1  [color="#2f6f52"];
+  router -> ph2  [color="#2f6f52"];
+  ph1 -> ph2 [label="nebula-sync", style=dashed, color="#2f6f52", fontcolor="#6ee7b7"];
 
-  cp -> jet [style=dashed, color="#c0392b", constraint=false];
-  cp -> w1  [style=dashed, color="#2e8b57", constraint=false];
-  cp -> w2  [style=dashed, color="#2e8b57", constraint=false];
+  cp -> jet [style=dashed, color="#9f1239", constraint=false];
+  cp -> w1  [style=dashed, color="#1d4ed8", constraint=false];
+  cp -> w2  [style=dashed, color="#1d4ed8", constraint=false];
+  nuc -> cp [style=dashed, color="#6d28d9", label="K3s worker", constraint=false, lhead=cluster_tp2];
+  cp -> work [label="LLM API → Ollama", color="#a3e635", penwidth=2.2, fontcolor="#bef264", constraint=false, ltail=cluster_tp2];
 }
