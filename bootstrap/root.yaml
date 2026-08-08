@@ -1,0 +1,26 @@
+# App-of-apps root. Argo watches apps/ and manages each Application it finds there.
+# Add a new app to the cluster by dropping an Application YAML into apps/ and pushing.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:mattarvon/turing-cluster-gitops.git
+    targetRevision: main
+    path: apps
+    directory:
+      recurse: false   # only Applications directly in apps/ (staged/ is ignored)
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true

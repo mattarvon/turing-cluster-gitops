@@ -1,0 +1,64 @@
+# NVIDIA GPU scheduling on the Jetson TX2 NX.
+# The stock NVIDIA k8s-device-plugin can't detect JetPack 4.6 (kernel 4.9 lacks
+# /sys/devices/soc0/family), so we advertise nvidia.com/gpu via squat's generic
+# device plugin, pinned to the GPU node (nodeSelector gpu=true).
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-gpu-device-plugin
+  namespace: kube-system
+  labels:
+    app: nvidia-gpu-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-gpu-device-plugin
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: nvidia-gpu-device-plugin
+    spec:
+      priorityClassName: system-node-critical
+      nodeSelector:
+        gpu: "true"
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: generic-device-plugin
+          image: ghcr.io/squat/generic-device-plugin:latest
+          imagePullPolicy: Always
+          args:
+            - --domain=nvidia.com
+            - --device
+            - |
+              name: gpu
+              groups:
+                - count: 10
+                  paths:
+                    - path: /dev/nvhost-gpu
+                    - path: /dev/nvhost-ctrl-gpu
+                    - path: /dev/nvmap
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: device-plugin
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: dev
+              mountPath: /dev
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: dev
+          hostPath:
+            path: /dev

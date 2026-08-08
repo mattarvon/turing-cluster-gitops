@@ -1,0 +1,28 @@
+# STAGED — do not move to apps/ until values are captured (see staged/README.md).
+# Capture live values first:  helm get values nfs-provisioner -n nfs-provisioner -o yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nfs-provisioner
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+    chart: nfs-subdir-external-provisioner
+    targetRevision: 4.0.18
+    helm:
+      releaseName: nfs-provisioner
+      # valuesObject:
+      #   nfs:
+      #     server: 192.168.1.105
+      #     path: /srv/nfs/k3s
+      #   storageClass:
+      #     name: nfs-client
+      #     defaultClass: false
+      #     accessModes: ReadWriteMany
+      #     reclaimPolicy: Retain
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nfs-provisioner
+  # No automated sync on purpose — adopt manually and verify diff first.

@@ -1,0 +1,16 @@
+# Selector-less Service that projects the RTX 5090 workstation's Ollama API
+# (192.168.1.110:11434) into the cluster as ai/ollama:11434. See endpoints.yaml.
+# clusterIP is pinned to match the live cluster so Argo adoption causes no churn.
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: ai
+spec:
+  type: ClusterIP
+  clusterIP: 10.43.54.180
+  ports:
+    - name: http
+      port: 11434
+      targetPort: 11434
+      protocol: TCP

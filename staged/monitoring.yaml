@@ -1,0 +1,23 @@
+# STAGED — do not move to apps/ until values are captured (see staged/README.md).
+# Capture live values first:  helm get values monitoring -n monitoring -o yaml
+# then paste them under helm.valuesObject so adoption causes zero churn.
+# NOTE: keep the Grafana admin password as the existing in-cluster Secret; do not
+# put it in git (reference existing secret via grafana.admin.existingSecret).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 88.1.3
+    helm:
+      releaseName: monitoring
+      # valuesObject: {}   # <-- paste captured values here before adopting
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  # No automated sync on purpose — adopt manually and verify diff first.
