@@ -1,89 +1,112 @@
-digraph TuringTopology {
-  rankdir=TB;
-  graph [fontname="Helvetica", fontsize=16, labelloc=t, fontcolor="#1b2735", bgcolor="white",
-         label="Turing Pi 2 — K3s Cluster Topology  (GitOps · nodes · namespaces · workloads · storage · access)",
-         nodesep=0.35, ranksep=0.6, pad=0.4, compound=true, splines=spline];
-  node [fontname="Helvetica", fontsize=9, shape=box, style="rounded,filled", color="#33475b", penwidth=1.1];
-  edge [fontname="Helvetica", fontsize=8, color="#5b7085"];
+digraph Turing {
+  rankdir=TB; compound=true; splines=spline; overlap=false;
+  bgcolor="#0a0e1a";
+  graph [fontname="DejaVu Sans", fontsize=26, labelloc=t, fontcolor="#e8f0ff",
+         label=<<b>⚡ TURING PI 2 — BARE-METAL KUBERNETES HOMELAB ⚡</b><br/><font point-size="12" color="#7c8db5">GitOps · 5 nodes (arm64 + amd64) · RTX 5090 LLMs · Jetson GPU · KubeVirt · HA DNS · full observability</font>>,
+         nodesep=0.45, ranksep=0.75, pad=0.5];
+  node [shape=plaintext, fontname="DejaVu Sans"];
+  edge [fontname="DejaVu Sans", fontsize=9, color="#3d4b6b", penwidth=1.3, arrowsize=0.7];
 
-  /* ---------- edge / access ---------- */
-  internet [label="Internet", shape=ellipse, fillcolor="#dfe7ef"];
-  router   [label="AmpliFi Router · 192.168.1.1\nDHCP · DNS → Pi-hole", fillcolor="#d6e4ff"];
+  /* ============ EDGE / INGRESS ============ */
+  internet [label=<<table border="1" color="#3d4b6b" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="7"><tr><td><font color="#9fb3d9" point-size="12"><b>🌐  Internet</b></font></td></tr></table>>];
+  router   [label=<<table border="2" color="#38bdf8" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#38bdf8" point-size="12"><b>📡  AmpliFi Router · .1</b></font></td></tr>
+      <tr><td align="left"><font color="#7c8db5" point-size="9">gateway · DHCP · DNS → Pi-hole</font></td></tr></table>>];
 
-  /* ---------- GitOps flow ---------- */
+  /* ============ GITOPS ============ */
   subgraph cluster_gitops {
-    label="GitOps"; fontsize=12; style="rounded,filled"; fillcolor="#eef9f0"; color="#8fce9b";
-    github [label="GitHub (private)\nmattarvon/turing-cluster-gitops\napp-of-apps", shape=folder, fillcolor="#d7f0dd"];
-    argocd [label="Argo CD  ·  ns argocd\nhttp://192.168.1.101:32700\nroot → apps/ → manifests/", fillcolor="#c7ead0"];
-    github -> argocd [label="SSH deploy key\n(read-only pull)", color="#2e8b57", fontcolor="#2e8b57"];
+    label=<<font color="#34d399" point-size="13"><b>  ⟳ GITOPS  </b></font>>; labeljust=l;
+    style="rounded,filled"; fillcolor="#0b1a14"; color="#1f7a55"; penwidth=2;
+    github [label=<<table border="2" color="#34d399" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#6ee7b7" point-size="12"><b>🐙  GitHub  (private)</b></font></td></tr>
+        <tr><td align="left"><font color="#8fd9b6" point-size="9">mattarvon/turing-cluster-gitops<br align="left"/>app-of-apps · source of truth</font></td></tr></table>>];
+    argocd [label=<<table border="2" color="#34d399" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#6ee7b7" point-size="12"><b>🚢  Argo CD</b></font></td></tr>
+        <tr><td align="left"><font color="#8fd9b6" point-size="9">ns argocd · :32700<br align="left"/>root → apps/ → manifests/</font></td></tr></table>>];
+    github -> argocd [label="deploy key\n(read-only)", color="#34d399", fontcolor="#6ee7b7", penwidth=1.8];
   }
 
-  /* ---------- DNS ---------- */
+  /* ============ DNS + WORKSTATION ============ */
   subgraph cluster_dns {
-    label="Network DNS · Raspberry Pi 3 ×2"; fontsize=10; style="rounded,filled"; fillcolor="#eef7ee"; color="#a9cfa9";
-    ph1 [label="pihole · .180 · PRIMARY", fillcolor="#e3f4e3"];
-    ph2 [label="pihole2 · .181 · BACKUP", fillcolor="#e3f4e3"];
-    ph1 -> ph2 [label="nebula-sync (04:00)", style=dashed, color="#2e8b57", fontcolor="#2e8b57"];
+    label=<<font color="#6ee7b7" point-size="12"><b>  🛡 REDUNDANT DNS  </b></font>>; labeljust=l;
+    style="rounded,filled"; fillcolor="#0c1712"; color="#2f6f52"; penwidth=1.6;
+    ph1 [label=<<table border="1" color="#34d399" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="6"><tr><td><font color="#8fd9b6" point-size="10"><b>🍓 pihole · .180</b>  PRIMARY</font></td></tr></table>>];
+    ph2 [label=<<table border="1" color="#2f6f52" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="6"><tr><td><font color="#8fd9b6" point-size="10"><b>🍓 pihole2 · .181</b>  BACKUP</font></td></tr></table>>];
+    ph1 -> ph2 [label="nebula-sync", style=dashed, color="#2f6f52", fontcolor="#6ee7b7"];
   }
-  ws [label="Workstation · .110\nRTX 5090 (32 GB) · Ollama LLM API", fillcolor="#fff0d6"];
+  ws [label=<<table border="2" color="#a3e635" bgcolor="#151a0d" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#bef264" point-size="12"><b>🎮  Workstation · .110</b></font></td></tr>
+      <tr><td align="left"><font color="#9ca86b" point-size="9">RTX 5090 (32 GB Blackwell) · 9800X3D<br align="left"/>Ollama LLM API — GPU-as-a-service</font></td></tr></table>>];
 
-  /* ---------- physical nodes ---------- */
+  /* ============ PHYSICAL NODES ============ */
   subgraph cluster_nodes {
-    label="K3s NODES (physical · mixed arch)"; fontsize=12; style="rounded,filled"; fillcolor="#eef1f8"; color="#aab4cf";
-    bmc [label="BMC · .100 (turingpi)\nmgmt · power · flash", fillcolor="#fde3cf", fontsize=8];
-    cp  [label="rk1-cp · .101 · RK3588 arm64\n★ CONTROL PLANE · v1.36.2", fillcolor="#cfe0ff"];
-    w1  [label="rk1-w1 · .103\nRK3588 arm64 · v1.36.2", fillcolor="#e4ebf7"];
-    w2  [label="rk1-w2 · .104\nRK3588 arm64 · v1.36.2", fillcolor="#e4ebf7"];
-    jet [label="jetson-gpu · .102 · Tegra arm64\nGPU worker · v1.34.9 (cgroup v1)", fillcolor="#ffd9d9"];
-    nuc [label="nuc-flasher · .105 · Intel amd64\nworker · NFS server · VM host · v1.36.2", fillcolor="#e8e0f5"];
+    label=<<font color="#22d3ee" point-size="14"><b>  🖧 TURING PI 2 BOARD + NUC — K3s NODES  </b></font>>; labeljust=l;
+    style="rounded,filled"; fillcolor="#0a1526"; color="#0e7490"; penwidth=2.2;
+    bmc [label=<<table border="1" color="#475569" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="6">
+        <tr><td align="left"><font color="#94a3b8" point-size="10"><b>🔌 BMC · .100</b></font></td></tr>
+        <tr><td align="left"><font color="#64748b" point-size="8">power · flash · switch</font></td></tr></table>>];
+    cp [label=<<table border="2" color="#22d3ee" bgcolor="#08283a" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#67e8f9" point-size="12"><b>⭐ rk1-cp · .101</b></font></td></tr>
+        <tr><td align="left"><font color="#7dd3e8" point-size="9">RK3588 arm64 · CONTROL PLANE<br align="left"/>v1.36.2 · 16 GB · 6-TOPS NPU</font></td></tr></table>>];
+    w1 [label=<<table border="1" color="#3b82f6" bgcolor="#0d1b33" cellborder="0" cellspacing="0" cellpadding="6">
+        <tr><td align="left"><font color="#93c5fd" point-size="11"><b>rk1-w1 · .103</b></font></td></tr>
+        <tr><td align="left"><font color="#7c9cc9" point-size="8">RK3588 arm64 · 16 GB</font></td></tr></table>>];
+    w2 [label=<<table border="1" color="#3b82f6" bgcolor="#0d1b33" cellborder="0" cellspacing="0" cellpadding="6">
+        <tr><td align="left"><font color="#93c5fd" point-size="11"><b>rk1-w2 · .104</b></font></td></tr>
+        <tr><td align="left"><font color="#7c9cc9" point-size="8">RK3588 arm64 · 16 GB</font></td></tr></table>>];
+    jet [label=<<table border="2" color="#fb7185" bgcolor="#2a1015" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#fda4af" point-size="12"><b>🧠 jetson-gpu · .102</b></font></td></tr>
+        <tr><td align="left"><font color="#e79aa5" point-size="9">Tegra arm64 · GPU WORKER<br align="left"/>256-core Pascal · nvidia.com/gpu</font></td></tr></table>>];
+    nuc [label=<<table border="2" color="#a78bfa" bgcolor="#17122e" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#c4b5fd" point-size="12"><b>🖥 nuc-flasher · .105</b></font></td></tr>
+        <tr><td align="left"><font color="#a99cd6" point-size="9">Intel i7 amd64 · worker<br align="left"/>NFS server · KubeVirt VM host</font></td></tr></table>>];
   }
 
-  /* ---------- namespaces (compact) ---------- */
-  argons [shape=box, style="rounded,filled", fillcolor="#e9f6ec", color="#8fce9b", fontsize=9, labeljust=l,
-       label="ns: argocd   (GitOps control plane)\l──────────────────────────\l• argocd-server (UI/API)  • repo-server\l• application-controller (STS)  • applicationset\l• redis · dex · notifications\l"];
-  mon [shape=box, style="rounded,filled", fillcolor="#eef4fc", color="#9bb8e0", fontsize=9, labeljust=l,
-       label="ns: monitoring   (kube-prometheus-stack 88.1.3)\l──────────────────────────\l• prometheus (STS)  ◆ PVC 15Gi   • grafana (Deploy) ◆ PVC 4Gi\l• alertmanager (STS)  • kube-state-metrics  • operator\l• pihole-exporter → both Pi-holes\l• node-exporter (DS · all)  • process-exporter (DS · all)\l• tegrastats-exporter (systemd on Jetson :9101)\l"];
-  ai  [shape=box, style="rounded,filled", fillcolor="#f4ecfc", color="#c3a9e0", fontsize=9, labeljust=l,
-       label="ns: ai\l──────────────\l• open-webui (Deploy · on NUC)  ◆ PVC 5Gi\l• Service+Endpoints: ollama ► Workstation .110:11434  ✦GitOps\l"];
-  vms [shape=box, style="rounded,filled", fillcolor="#efeafa", color="#b0a9d0", fontsize=9, labeljust=l,
-       label="ns: vms   (KubeVirt VM)\l──────────────\l• desktop-vm (VMI · on NUC · Ubuntu XFCE · RDP)  ◆ PVC 25Gi\l"];
-  sys [shape=box, style="rounded,filled", fillcolor="#f1f1ee", color="#c9c6bd", fontsize=9, labeljust=l,
-       label="ns: kube-system / kubevirt / cdi / nfs-provisioner\l──────────────────────────\l• traefik (ingress) · coredns · metrics-server · local-path\l• headlamp (UI :32650)\l• nvidia-gpu-device-plugin (DS → Jetson)  ✦GitOps\l• kubevirt: virt-operator/api/controller + virt-handler (DS)\l• cdi: apiserver/deployment/operator/uploadproxy\l• nfs-subdir provisioner  (owns SC nfs-client)\l"];
+  /* ============ WORKLOADS BY NAMESPACE ============ */
+  ai [label=<<table border="2" color="#c084fc" bgcolor="#1a1030" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#d8b4fe" point-size="12"><b>🤖 ns: ai</b></font></td></tr>
+      <tr><td align="left"><font color="#b39ddb" point-size="9">• open-webui (LLM chat) ◆5Gi<br align="left"/>• ollama Service ► .110:11434</font></td></tr></table>>];
+  mon [label=<<table border="2" color="#38bdf8" bgcolor="#08203a" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#7dd3fc" point-size="12"><b>📊 ns: monitoring</b></font></td></tr>
+      <tr><td align="left"><font color="#8ec5e0" point-size="9">• prometheus ◆15Gi · grafana ◆4Gi · alertmanager<br align="left"/>• node / process / pihole / Jetson-GPU exporters</font></td></tr></table>>];
+  vms [label=<<table border="2" color="#a78bfa" bgcolor="#161033" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#c4b5fd" point-size="12"><b>💻 ns: vms  (KubeVirt)</b></font></td></tr>
+      <tr><td align="left"><font color="#a99cd6" point-size="9">• desktop-vm · Ubuntu XFCE · RDP ◆25Gi</font></td></tr></table>>];
+  sys [label=<<table border="2" color="#94a3b8" bgcolor="#111827" cellborder="0" cellspacing="0" cellpadding="7">
+      <tr><td align="left"><font color="#cbd5e1" point-size="12"><b>⚙ ns: kube-system / kubevirt / cdi</b></font></td></tr>
+      <tr><td align="left"><font color="#94a3b8" point-size="9">• traefik · coredns · headlamp · metrics-server<br align="left"/>• nvidia-gpu-device-plugin · virt-* · cdi-* · nfs-provisioner</font></td></tr></table>>];
 
-  /* ---------- storage ---------- */
+  /* ============ STORAGE ============ */
   subgraph cluster_store {
-    label="STORAGE"; fontsize=12; style="rounded,filled"; fillcolor="#fef6ea"; color="#e0c9a0";
-    scloc [label="SC: local-path (default)\nper-node SSD · rancher.io/local-path", shape=cylinder, fillcolor="#fdeccb"];
-    scnfs [label="SC: nfs-client\nNFS on NUC .105 · /srv/nfs/k3s (~458 GB) · RWX", shape=cylinder, fillcolor="#fbdcb2"];
-    pvctbl [shape=box, style="filled", fillcolor="#ffffff", color="#e0c9a0", fontsize=8, labeljust=l,
-       label="Persistent Volume Claims\l──────────────────────────────\lprometheus-db     15Gi   local-path\lgrafana            4Gi   local-path\lopen-webui-data    5Gi   nfs-client\ldesktop-vm-disk   25Gi   nfs-client\lbig-nfs-pvc      300Gi   nfs-client  (spare RWX)\l"];
+    label=<<font color="#fbbf24" point-size="13"><b>  🗄 STORAGE  </b></font>>; labeljust=l;
+    style="rounded,filled"; fillcolor="#1c1508"; color="#b45309"; penwidth=1.8;
+    scloc [label=<<table border="1" color="#f59e0b" bgcolor="#241a09" cellborder="0" cellspacing="0" cellpadding="6"><tr><td align="left"><font color="#fcd34d" point-size="10"><b>SC local-path</b> (default)</font></td></tr><tr><td align="left"><font color="#c99a4a" point-size="8">per-node SSD</font></td></tr></table>>];
+    scnfs [label=<<table border="1" color="#f59e0b" bgcolor="#241a09" cellborder="0" cellspacing="0" cellpadding="6"><tr><td align="left"><font color="#fcd34d" point-size="10"><b>SC nfs-client</b> (RWX)</font></td></tr><tr><td align="left"><font color="#c99a4a" point-size="8">NFS on NUC · ~458 GB</font></td></tr></table>>];
   }
 
-  /* ---------- access ---------- */
-  access [shape=box, style="rounded,filled", fillcolor="#fff7e6", color="#e0c98a", fontsize=9, labeljust=l,
-    label="External access · NodePort  (any node IP, e.g. .101)\l──────────────────────────\lArgo CD          :32700\lGrafana          :32300\lHeadlamp         :32650\lOpen WebUI       :32400\ldesktop-vm (RDP) :32389\lTraefik ingress  :32289 / :30145\l"];
+  /* ============ ACCESS ============ */
+  access [label=<<table border="2" color="#f472b6" bgcolor="#2a0f1e" cellborder="0" cellspacing="0" cellpadding="8">
+      <tr><td align="left"><font color="#f9a8d4" point-size="12"><b>🔗 ACCESS · NodePort</b></font></td></tr>
+      <tr><td align="left"><font color="#d98cb3" point-size="9">Argo CD :32700 · Grafana :32300<br align="left"/>Headlamp :32650 · Open WebUI :32400<br align="left"/>desktop-vm RDP :32389 · Traefik :32289</font></td></tr></table>>];
 
-  /* ---------- edges ---------- */
-  internet -> router;
-  router -> cp  [label="LAN", color="#9aa7b5"];
-  router -> nuc [style=dashed, color="#9aa7b5"];
-  router -> ws  [style=dashed, color="#9aa7b5"];
-  router -> ph1 [style=dashed, color="#9aa7b5"];
+  /* ============ EDGES ============ */
+  internet -> router [color="#38bdf8", penwidth=1.6];
+  router -> cp  [label="LAN", color="#0e7490", penwidth=1.6];
+  router -> nuc [style=dashed, color="#334155"];
+  router -> ws  [style=dashed, color="#334155"];
+  router -> ph1 [style=dashed, color="#334155"];
 
-  cp -> w1  [style=dashed, color="#2e8b57"];
-  cp -> w2  [style=dashed, color="#2e8b57"];
-  cp -> jet [style=dashed, color="#c0392b"];
-  cp -> nuc [style=dashed, color="#2e8b57", label="K3s"];
+  cp -> w1  [style=dashed, color="#1d4ed8"];
+  cp -> w2  [style=dashed, color="#1d4ed8"];
+  cp -> jet [style=dashed, color="#9f1239"];
+  cp -> nuc [style=dashed, color="#6d28d9", label="K3s"];
 
-  argocd -> argons [label="syncs / self-heals", color="#2e8b57", penwidth=1.8, fontcolor="#2e8b57", style=bold, ltail=cluster_gitops];
-  ai -> ws [label="LLM API", color="#7b2fbf", penwidth=1.8, fontcolor="#7b2fbf", constraint=false];
+  argocd -> cp [label="syncs / self-heals", color="#34d399", penwidth=2.4, fontcolor="#6ee7b7", ltail=cluster_gitops, lhead=cluster_nodes];
+  ai -> ws [label="LLM", color="#a3e635", penwidth=2.2, fontcolor="#bef264", constraint=false];
 
-  /* storage backing */
-  mon -> scloc [color="#c98a2a", label="◆"];
-  ai  -> scnfs [color="#2a7ec9"];
-  vms -> scnfs [color="#2a7ec9"];
-  scloc -> cp  [style=dotted, color="#c98a2a", label="local on each node", constraint=false];
-  scnfs -> nuc [style=dotted, color="#2a7ec9", label="exported by", constraint=false];
+  mon -> scloc [color="#f59e0b"];
+  ai  -> scnfs [color="#f59e0b"];
+  vms -> scnfs [color="#f59e0b"];
 
-  { rank=same; argons; mon; ai; vms; sys; }
+  { rank=same; ai; mon; vms; sys; }
 }

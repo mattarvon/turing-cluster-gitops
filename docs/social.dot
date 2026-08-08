@@ -1,0 +1,23 @@
+digraph Social {
+  bgcolor="#0a0e1a";
+  node [shape=plaintext, fontname="DejaVu Sans"];
+  hero [label=<
+    <table border="0" cellborder="0" cellspacing="0" cellpadding="10">
+      <tr><td><font color="#e8f0ff" point-size="40"><b>⚡ TURING PI 2 · KUBERNETES HOMELAB</b></font></td></tr>
+      <tr><td><font color="#7c8db5" point-size="16">bare-metal K3s · GitOps by Argo CD · arm64 + amd64</font></td></tr>
+      <tr><td cellpadding="6">
+        <table border="0" cellborder="0" cellspacing="8" cellpadding="9">
+          <tr>
+            <td bgcolor="#08283a"><font color="#67e8f9" point-size="15"><b>⭐ 5 nodes</b></font></td>
+            <td bgcolor="#2a1015"><font color="#fda4af" point-size="15"><b>🧠 2 GPUs</b></font></td>
+            <td bgcolor="#1a1030"><font color="#d8b4fe" point-size="15"><b>🤖 local LLMs</b></font></td>
+            <td bgcolor="#161033"><font color="#c4b5fd" point-size="15"><b>💻 KubeVirt VMs</b></font></td>
+            <td bgcolor="#0f1f18"><font color="#6ee7b7" point-size="15"><b>🛡 HA DNS</b></font></td>
+            <td bgcolor="#08203a"><font color="#7dd3fc" point-size="15"><b>📊 full metrics</b></font></td>
+          </tr>
+        </table>
+      </td></tr>
+      <tr><td><font color="#9fb3d9" point-size="14">Turing Pi 2 · 3× RK3588 + Jetson TX2 NX · Intel NUC · RTX 5090 GPU-as-a-service · 458 GB NFS</font></td></tr>
+    </table>
+  >];
+}
