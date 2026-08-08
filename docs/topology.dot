@@ -1,0 +1,89 @@
+digraph TuringTopology {
+  rankdir=TB;
+  graph [fontname="Helvetica", fontsize=16, labelloc=t, fontcolor="#1b2735", bgcolor="white",
+         label="Turing Pi 2 — K3s Cluster Topology  (GitOps · nodes · namespaces · workloads · storage · access)",
+         nodesep=0.35, ranksep=0.6, pad=0.4, compound=true, splines=spline];
+  node [fontname="Helvetica", fontsize=9, shape=box, style="rounded,filled", color="#33475b", penwidth=1.1];
+  edge [fontname="Helvetica", fontsize=8, color="#5b7085"];
+
+  /* ---------- edge / access ---------- */
+  internet [label="Internet", shape=ellipse, fillcolor="#dfe7ef"];
+  router   [label="AmpliFi Router · 192.168.1.1\nDHCP · DNS → Pi-hole", fillcolor="#d6e4ff"];
+
+  /* ---------- GitOps flow ---------- */
+  subgraph cluster_gitops {
+    label="GitOps"; fontsize=12; style="rounded,filled"; fillcolor="#eef9f0"; color="#8fce9b";
+    github [label="GitHub (private)\nmattarvon/turing-cluster-gitops\napp-of-apps", shape=folder, fillcolor="#d7f0dd"];
+    argocd [label="Argo CD  ·  ns argocd\nhttp://192.168.1.101:32700\nroot → apps/ → manifests/", fillcolor="#c7ead0"];
+    github -> argocd [label="SSH deploy key\n(read-only pull)", color="#2e8b57", fontcolor="#2e8b57"];
+  }
+
+  /* ---------- DNS ---------- */
+  subgraph cluster_dns {
+    label="Network DNS · Raspberry Pi 3 ×2"; fontsize=10; style="rounded,filled"; fillcolor="#eef7ee"; color="#a9cfa9";
+    ph1 [label="pihole · .180 · PRIMARY", fillcolor="#e3f4e3"];
+    ph2 [label="pihole2 · .181 · BACKUP", fillcolor="#e3f4e3"];
+    ph1 -> ph2 [label="nebula-sync (04:00)", style=dashed, color="#2e8b57", fontcolor="#2e8b57"];
+  }
+  ws [label="Workstation · .110\nRTX 5090 (32 GB) · Ollama LLM API", fillcolor="#fff0d6"];
+
+  /* ---------- physical nodes ---------- */
+  subgraph cluster_nodes {
+    label="K3s NODES (physical · mixed arch)"; fontsize=12; style="rounded,filled"; fillcolor="#eef1f8"; color="#aab4cf";
+    bmc [label="BMC · .100 (turingpi)\nmgmt · power · flash", fillcolor="#fde3cf", fontsize=8];
+    cp  [label="rk1-cp · .101 · RK3588 arm64\n★ CONTROL PLANE · v1.36.2", fillcolor="#cfe0ff"];
+    w1  [label="rk1-w1 · .103\nRK3588 arm64 · v1.36.2", fillcolor="#e4ebf7"];
+    w2  [label="rk1-w2 · .104\nRK3588 arm64 · v1.36.2", fillcolor="#e4ebf7"];
+    jet [label="jetson-gpu · .102 · Tegra arm64\nGPU worker · v1.34.9 (cgroup v1)", fillcolor="#ffd9d9"];
+    nuc [label="nuc-flasher · .105 · Intel amd64\nworker · NFS server · VM host · v1.36.2", fillcolor="#e8e0f5"];
+  }
+
+  /* ---------- namespaces (compact) ---------- */
+  argons [shape=box, style="rounded,filled", fillcolor="#e9f6ec", color="#8fce9b", fontsize=9, labeljust=l,
+       label="ns: argocd   (GitOps control plane)\l──────────────────────────\l• argocd-server (UI/API)  • repo-server\l• application-controller (STS)  • applicationset\l• redis · dex · notifications\l"];
+  mon [shape=box, style="rounded,filled", fillcolor="#eef4fc", color="#9bb8e0", fontsize=9, labeljust=l,
+       label="ns: monitoring   (kube-prometheus-stack 88.1.3)\l──────────────────────────\l• prometheus (STS)  ◆ PVC 15Gi   • grafana (Deploy) ◆ PVC 4Gi\l• alertmanager (STS)  • kube-state-metrics  • operator\l• pihole-exporter → both Pi-holes\l• node-exporter (DS · all)  • process-exporter (DS · all)\l• tegrastats-exporter (systemd on Jetson :9101)\l"];
+  ai  [shape=box, style="rounded,filled", fillcolor="#f4ecfc", color="#c3a9e0", fontsize=9, labeljust=l,
+       label="ns: ai\l──────────────\l• open-webui (Deploy · on NUC)  ◆ PVC 5Gi\l• Service+Endpoints: ollama ► Workstation .110:11434  ✦GitOps\l"];
+  vms [shape=box, style="rounded,filled", fillcolor="#efeafa", color="#b0a9d0", fontsize=9, labeljust=l,
+       label="ns: vms   (KubeVirt VM)\l──────────────\l• desktop-vm (VMI · on NUC · Ubuntu XFCE · RDP)  ◆ PVC 25Gi\l"];
+  sys [shape=box, style="rounded,filled", fillcolor="#f1f1ee", color="#c9c6bd", fontsize=9, labeljust=l,
+       label="ns: kube-system / kubevirt / cdi / nfs-provisioner\l──────────────────────────\l• traefik (ingress) · coredns · metrics-server · local-path\l• headlamp (UI :32650)\l• nvidia-gpu-device-plugin (DS → Jetson)  ✦GitOps\l• kubevirt: virt-operator/api/controller + virt-handler (DS)\l• cdi: apiserver/deployment/operator/uploadproxy\l• nfs-subdir provisioner  (owns SC nfs-client)\l"];
+
+  /* ---------- storage ---------- */
+  subgraph cluster_store {
+    label="STORAGE"; fontsize=12; style="rounded,filled"; fillcolor="#fef6ea"; color="#e0c9a0";
+    scloc [label="SC: local-path (default)\nper-node SSD · rancher.io/local-path", shape=cylinder, fillcolor="#fdeccb"];
+    scnfs [label="SC: nfs-client\nNFS on NUC .105 · /srv/nfs/k3s (~458 GB) · RWX", shape=cylinder, fillcolor="#fbdcb2"];
+    pvctbl [shape=box, style="filled", fillcolor="#ffffff", color="#e0c9a0", fontsize=8, labeljust=l,
+       label="Persistent Volume Claims\l──────────────────────────────\lprometheus-db     15Gi   local-path\lgrafana            4Gi   local-path\lopen-webui-data    5Gi   nfs-client\ldesktop-vm-disk   25Gi   nfs-client\lbig-nfs-pvc      300Gi   nfs-client  (spare RWX)\l"];
+  }
+
+  /* ---------- access ---------- */
+  access [shape=box, style="rounded,filled", fillcolor="#fff7e6", color="#e0c98a", fontsize=9, labeljust=l,
+    label="External access · NodePort  (any node IP, e.g. .101)\l──────────────────────────\lArgo CD          :32700\lGrafana          :32300\lHeadlamp         :32650\lOpen WebUI       :32400\ldesktop-vm (RDP) :32389\lTraefik ingress  :32289 / :30145\l"];
+
+  /* ---------- edges ---------- */
+  internet -> router;
+  router -> cp  [label="LAN", color="#9aa7b5"];
+  router -> nuc [style=dashed, color="#9aa7b5"];
+  router -> ws  [style=dashed, color="#9aa7b5"];
+  router -> ph1 [style=dashed, color="#9aa7b5"];
+
+  cp -> w1  [style=dashed, color="#2e8b57"];
+  cp -> w2  [style=dashed, color="#2e8b57"];
+  cp -> jet [style=dashed, color="#c0392b"];
+  cp -> nuc [style=dashed, color="#2e8b57", label="K3s"];
+
+  argocd -> argons [label="syncs / self-heals", color="#2e8b57", penwidth=1.8, fontcolor="#2e8b57", style=bold, ltail=cluster_gitops];
+  ai -> ws [label="LLM API", color="#7b2fbf", penwidth=1.8, fontcolor="#7b2fbf", constraint=false];
+
+  /* storage backing */
+  mon -> scloc [color="#c98a2a", label="◆"];
+  ai  -> scnfs [color="#2a7ec9"];
+  vms -> scnfs [color="#2a7ec9"];
+  scloc -> cp  [style=dotted, color="#c98a2a", label="local on each node", constraint=false];
+  scnfs -> nuc [style=dotted, color="#2a7ec9", label="exported by", constraint=false];
+
+  { rank=same; argons; mon; ai; vms; sys; }
+}

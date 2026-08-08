@@ -1,0 +1,40 @@
+digraph TuringPi2 {
+  rankdir=TB;
+  graph [fontname="Helvetica", fontsize=11, bgcolor="white", nodesep=0.3, ranksep=0.45, pad=0.25];
+  node  [fontname="Helvetica", fontsize=9, shape=box, style="rounded,filled", color="#33475b", penwidth=1.1];
+  edge  [fontname="Helvetica", fontsize=8, color="#5b7085"];
+
+  internet [label="Internet", shape=ellipse, fillcolor="#dfe7ef"];
+  router   [label="AmpliFi Router / Gateway\n192.168.1.1", fillcolor="#d6e4ff"];
+  pihole [label="Pi-hole DNS (pihole)\n192.168.1.180\nRPi 3 / Debian 13", fillcolor="#e3f4e3"];
+  nuc    [label="NUC (nuc-flasher)\n192.168.1.105\nUbuntu 20.04", fillcolor="#efe6f6"];
+  work   [label="Workstation\nWin 11 / kubectl", fillcolor="#eef2f7"];
+
+  subgraph cluster_tp2 {
+    label="Turing Pi 2 (v2.4) — Mini-ITX cluster board";
+    fontname="Helvetica"; fontsize=11; style="rounded,filled"; fillcolor="#f6f5f1"; color="#b9b6ad"; penwidth=1.4;
+    sw  [label="On-board Gigabit switch  (single RJ45 uplink)", fillcolor="#fff3d6", fontsize=8];
+    bmc [label="BMC (turingpi)\n192.168.1.100 · fw v2.0.5", fillcolor="#fde3cf"];
+    cp  [label="Node 1 · rk1-cp\nRK3588 16GB · Ubuntu 22.04\n192.168.1.101\n★ K3s CONTROL PLANE (v1.36.2)", fillcolor="#cfe0ff"];
+    jet [label="Node 2 · jetson-gpu\nJetson TX2 NX · L4T 18.04\n192.168.1.102\n★ GPU WORKER (v1.34.9 · gpu=true)", fillcolor="#ffd9d9"];
+    w1  [label="Node 3 · rk1-w1\nRK3588 16GB · Ubuntu 22.04\n192.168.1.103\nK3s worker (v1.36.2)", fillcolor="#e4ebf7"];
+    w2  [label="Node 4 · rk1-w2\nRK3588 16GB · Ubuntu 22.04\n192.168.1.104\nK3s worker (v1.36.2)", fillcolor="#e4ebf7"];
+    sw -> bmc [color="#b9b6ad"];
+    sw -> cp  [color="#b9b6ad"];
+    sw -> jet [color="#b9b6ad"];
+    sw -> w1  [color="#b9b6ad"];
+    sw -> w2  [color="#b9b6ad"];
+    {rank=same; cp; jet;}
+    {rank=same; w1; w2;}
+  }
+
+  internet -> router;
+  router -> sw [label="LAN"];
+  router -> pihole;
+  router -> nuc;
+  router -> work;
+
+  cp -> jet [style=dashed, color="#c0392b", constraint=false];
+  cp -> w1  [style=dashed, color="#2e8b57", constraint=false];
+  cp -> w2  [style=dashed, color="#2e8b57", constraint=false];
+}

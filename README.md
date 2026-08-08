@@ -1,9 +1,18 @@
 # turing-cluster-gitops
 
 GitOps source of truth for the **Turing Pi 2 K3s cluster**, managed by **Argo CD**
-using the *app-of-apps* pattern. (Human docs — architecture, IPs, credentials — live
-separately in `C:\Users\matt\turing-cluster\turing-build-doc.md`, which is **not** pushed
-here so no plaintext credentials ever land in this repo.)
+using the *app-of-apps* pattern. (Credentials live separately in the local
+`turing-cluster/turing-build-doc.md` and are **not** pushed here.)
+
+## Architecture & topology
+
+Full, cluster-specific reference — every component, how it's wired, where it runs:
+**[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
+![Cluster topology](docs/topology.png)
+
+*Logical topology (GitOps · nodes · namespaces · workloads · storage · access). Physical
+architecture diagram and diagram sources are in [`docs/`](docs/).*
 
 ## Layout
 ```
