@@ -1,0 +1,72 @@
+# Tailscale subnet router — advertises the home LAN (192.168.1.0/24) onto the
+# tailnet so any Tailscale device can reach every cluster service by its normal
+# 192.168.1.x address (kubectl :6443, Grafana, Argo, RDP, SSH, Pi-hole, …).
+# Pinned to the NUC: always-on, amd64, on the LAN.
+#
+# The TS_AUTHKEY secret (tailscale-auth) is created OUT-OF-BAND (never in git):
+#   kubectl -n tailscale create secret generic tailscale-auth --from-literal=TS_AUTHKEY=tskey-auth-XXXX
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: subnet-router
+  namespace: tailscale
+  labels:
+    app: subnet-router
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: subnet-router
+  template:
+    metadata:
+      labels:
+        app: subnet-router
+    spec:
+      serviceAccountName: tailscale
+      nodeSelector:
+        kubernetes.io/hostname: nuc-flasher
+      initContainers:
+        - name: sysctler                       # enable IP forwarding for subnet routing
+          image: busybox:1.36
+          securityContext:
+            privileged: true
+          command:
+            - /bin/sh
+            - -c
+            - sysctl -w net.ipv4.ip_forward=1 net.ipv6.conf.all.forwarding=1 || true
+      containers:
+        - name: tailscale
+          image: ghcr.io/tailscale/tailscale:latest
+          env:
+            - name: TS_KUBE_SECRET
+              value: tailscale-state
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_ROUTES
+              value: "192.168.1.0/24"
+            - name: TS_HOSTNAME
+              value: turing-subnet-router
+            - name: TS_EXTRA_ARGS
+              value: "--accept-dns=false"
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-auth
+                  key: TS_AUTHKEY
+                  optional: true          # lets the pod start before the secret exists
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          volumeMounts:
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+          resources:
+            requests: {cpu: 25m, memory: 64Mi}
+            limits: {memory: 128Mi}
+      volumes:
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice

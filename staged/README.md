@@ -21,6 +21,7 @@ into GitOps one at a time — safely, after verifying the desired manifest match
 | desktop-vm (KubeVirt VM) | raw | vms | cloud-init contains a lab password; commit only if acceptable |
 | pihole-exporter | raw | monitoring | needs Pi-hole password Secret — use Sealed Secrets before committing |
 | tegrastats-exporter | raw | monitoring | Jetson GPU metrics; safe to codify (no secret) |
+| **tailscale-subnet-router** | raw | tailscale | **Remote access** — advertises 192.168.1.0/24 onto the tailnet. Needs `tailscale-auth` secret (out-of-band); see `tailscale-subnet-router.yaml` header for activation. |
 
 ## Secrets policy
 No plaintext credentials in this repo. Adopt secret-bearing apps only after installing

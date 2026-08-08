@@ -1,0 +1,30 @@
+# STAGED — remote access via Tailscale. Activate AFTER creating the auth-key secret:
+#   1. Tailscale admin console → generate a reusable auth key (enable "subnet router").
+#   2. kubectl -n tailscale create secret generic tailscale-auth --from-literal=TS_AUTHKEY=tskey-auth-XXXX
+#      (create the ns first if needed: kubectl create ns tailscale)
+#   3. Move this file to apps/ and push — Argo deploys the subnet router.
+#   4. In the Tailscale admin console, approve the advertised route 192.168.1.0/24.
+# The auth key is NEVER committed (this repo is public).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale-subnet-router
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:mattarvon/turing-cluster-gitops.git
+    targetRevision: main
+    path: manifests/tailscale-subnet-router
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tailscale
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
