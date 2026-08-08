@@ -22,14 +22,17 @@ wired, and where it runs. Credentials are **not** in this repo — they live in 
 
 ## 1. Physical layer
 
-| Node | IP | Slot | SoC / CPU | Arch | RAM | Role |
-|------|----|------|-----------|------|-----|------|
-| turingpi (BMC) | 192.168.1.100 | board | Turing Pi 2 v2.4 BMC (fw 2.0.5) | — | — | mgmt · power · flashing |
-| rk1-cp | 192.168.1.101 | N1 | Rockchip RK3588 (8-core) | arm64 | 16 GB | **K3s control plane** |
-| jetson-gpu | 192.168.1.102 | N2 | NVIDIA Tegra186 (Parker, Pascal iGPU 6.2) | arm64 | 4 GB | GPU worker |
-| rk1-w1 | 192.168.1.103 | N3 | Rockchip RK3588 (8-core) | arm64 | 16 GB | worker |
-| rk1-w2 | 192.168.1.104 | N4 | Rockchip RK3588 (8-core) | arm64 | 16 GB | worker |
-| nuc-flasher | 192.168.1.105 | ext | Intel i7-8559U + Iris Plus 655 | amd64 | 31 GB | worker · NFS server · VM host · flash host |
+The **Turing Pi 2 (v2.4)** carrier board holds 4 compute modules over an on-board Gigabit switch
+(single RJ45 uplink) and a BMC for out-of-band management. The NUC hangs off the same LAN.
+
+| Node | IP | Slot | SoC / CPU | GPU / accel | Arch | RAM | Role · capability |
+|------|----|------|-----------|-------------|------|-----|-------------------|
+| turingpi (BMC) | 192.168.1.100 | board | Turing Pi 2 v2.4 BMC (fw 2.0.5) | — | — | — | Out-of-band mgmt: per-node power, USB routing, flashing, UART, on-board GbE switch. |
+| rk1-cp | 192.168.1.101 | N1 | Rockchip RK3588 (4×A76 + 4×A55) | 6-TOPS NPU (unused) | arm64 | 16 GB | **K3s control plane** — API/scheduler/etcd; hosts the monitoring stack. |
+| jetson-gpu | 192.168.1.102 | N2 | NVIDIA Tegra186 Parker (2×Denver2 + 4×A57) | **256-core Pascal GPU, CC 6.2** | arm64 | 4 GB | **GPU worker** — CUDA compute, advertises `nvidia.com/gpu`; CUDA raytracer/fractal renders. |
+| rk1-w1 | 192.168.1.103 | N3 | Rockchip RK3588 (8-core) | 6-TOPS NPU (unused) | arm64 | 16 GB | General ARM64 worker. |
+| rk1-w2 | 192.168.1.104 | N4 | Rockchip RK3588 (8-core) | 6-TOPS NPU (unused) | arm64 | 16 GB | General ARM64 worker. |
+| nuc-flasher | 192.168.1.105 | ext | Intel i7-8559U (4c/8t) | Iris Plus 655 (QuickSync, OpenVINO) | amd64 | 31 GB | x86 worker · **NFS server** (458 GB RWX) · **KubeVirt VM host** · Jetson flash host. |
 
 Off-cluster but part of the mix:
 
