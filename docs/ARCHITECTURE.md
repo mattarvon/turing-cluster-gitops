@@ -101,7 +101,7 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 | desktop-vm-disk | vms | nfs-client | 25 Gi |
 | big-nfs-pvc | default | nfs-client | 300 Gi (spare RWX) |
 
-⚠️ NFS lives on a single disk in the NUC — shared, not replicated; the NUC is a SPOF for RWX volumes.
+ NFS lives on a single disk in the NUC — shared, not replicated; the NUC is a SPOF for RWX volumes.
 
 ## 6. GPU
 

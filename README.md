@@ -1,9 +1,9 @@
-# 🚀 Turing Pi 2 — Bare-Metal Kubernetes Cluster
+# Turing Pi 2 — Bare-Metal Kubernetes Cluster
 
 ![K3s](https://img.shields.io/badge/K3s-v1.36-FFC61C?logo=k3s&logoColor=black)
 ![Argo CD](https://img.shields.io/badge/GitOps-Argo%20CD-EF7B4D?logo=argo&logoColor=white)
-![Nodes](https://img.shields.io/badge/nodes-5%20(arm64%20%2B%20amd64)-326CE5?logo=kubernetes&logoColor=white)
-![GPUs](https://img.shields.io/badge/GPUs-RTX%205090%20%2B%20Jetson-76B900?logo=nvidia&logoColor=white)
+![Nodes](https://img.shields.io/badge/nodes-6%20(arm64%20%2B%20amd64)-326CE5?logo=kubernetes&logoColor=white)
+![GPUs](https://img.shields.io/badge/GPUs-5090%20%2B%202070S%20%2B%20Jetson-76B900?logo=nvidia&logoColor=white)
 ![DNS](https://img.shields.io/badge/DNS-Pi--hole%20HA-96060C?logo=pi-hole&logoColor=white)
 
 > A five-node, mixed-architecture Kubernetes cluster on a **Turing Pi 2** board + an **Intel NUC** —
@@ -14,11 +14,11 @@
 This repository is the **GitOps source of truth**: push a manifest, Argo reconciles the cluster.
 Credentials live only in the local build doc and are never committed here.
 
-**➡️ Full architecture reference (every component, wiring, placement): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
+**Full architecture reference (every component, wiring, placement): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
 
 ---
 
-## ✨ Highlights
+## Highlights
 
 - **Mixed-arch K3s** — 3× ARM64 Rockchip modules + 1× ARM64 NVIDIA Jetson + 1× x86-64 Intel NUC, one cluster.
 - **GitOps** — Argo CD (app-of-apps) reconciles everything from this git repo.
@@ -34,7 +34,7 @@ Credentials live only in the local build doc and are never committed here.
 
 ---
 
-## 🧱 Hardware
+## Hardware
 
 ### Compute — the Turing Pi 2 board
 
@@ -62,7 +62,7 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 
 ---
 
-## 🖥️ Platform stack
+## Platform stack
 
 | Layer | What runs it |
 |-------|--------------|
@@ -79,7 +79,7 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 
 ---
 
-## 🔗 Access & endpoints
+## Access & endpoints
 
 Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router.
 
@@ -95,7 +95,7 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 
 ---
 
-## 🎯 What it can do
+## What it can do
 
 - **Run local LLMs** — chat via Open WebUI, backed by the 5090; models on demand via Ollama.
 - **Run VMs next to containers** — a full XFCE Linux desktop over RDP, disk on shared NFS.
@@ -106,13 +106,13 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 
 ---
 
-## 📐 Physical architecture
+## Physical architecture
 
 ![Physical architecture](docs/architecture.png)
 
 ---
 
-## 📊 By the numbers
+## By the numbers
 
 - **6** nodes · **2** CPU architectures (arm64 + amd64)
 - **~42** CPU cores · **~145 GB** cluster RAM
@@ -122,7 +122,7 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 
 ---
 
-## 🗂️ This repo (GitOps)
+## This repo (GitOps)
 
 ```
 bootstrap/root.yaml     app-of-apps root; watches apps/ (recurse=false)
@@ -139,7 +139,7 @@ The rest of the cluster is inventoried in [`staged/`](staged/) for safe, increme
 
 **Regenerate diagrams:** `dot -Tpng docs/topology.dot -o docs/topology.png -Gdpi=150`
 
-## 🔐 Secrets policy
+## Secrets policy
 
 No plaintext credentials in this repo. Secret-bearing apps are adopted only after Sealed/External
 Secrets is in place, or their Secrets stay applied out-of-band.
