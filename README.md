@@ -20,11 +20,11 @@ Credentials live only in the local build doc and are never committed here.
 
 ## Highlights
 
-- **Mixed-arch K3s** — 3× ARM64 Rockchip modules + 1× ARM64 NVIDIA Jetson + 1× x86-64 Intel NUC, one cluster.
+- **Mixed-arch K3s (6 nodes)** — 3× ARM64 Rockchip RK1 + 1× ARM64 NVIDIA Jetson + 2× x86-64 (Intel NUC + `zullx`), one cluster.
 - **GitOps** — Argo CD (app-of-apps) reconciles everything from this git repo.
 - **GPU-as-a-service** — an RTX 5090 (32 GB) serves local LLMs (Ollama + Open WebUI) to the cluster without being a node.
 - **Schedulable Jetson GPU** — `nvidia.com/gpu` workloads (CUDA compute, raytracing, fractals) on the Tegra.
-- **Second GPU node (`zullx`)** — an AMD Ryzen / **RTX 2070 SUPER** box joined as a K3s GPU worker (62 GB RAM) with its **1 TB M.2 NVMe as fast cluster storage** (`nvme-local`).
+- **`zullx` — x86 GPU worker node** — AMD **Ryzen 7 3700X** (8C/16T) · **62 GB RAM** · **RTX 2070 SUPER (8 GB)** · Ubuntu 24.04. Schedulable `nvidia.com/gpu` (CUDA / Stable Diffusion / TensorRT); its 1 TB M.2 NVMe is the **`nvme-local`** StorageClass (860 GB fast PVCs).
 - **Real VMs** — KubeVirt runs a full Linux desktop alongside containers, reachable over **RDP at `192.168.1.105:32389`**.
 - **Redundant DNS** — primary + backup Pi-hole, auto-synced nightly, LAN-wide ad-blocking.
 - **458 GB shared storage** — NFS RWX served from the NUC to the whole cluster.
