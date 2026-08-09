@@ -18,7 +18,6 @@ digraph Social {
         </table>
       </td></tr>
       <tr><td><font color="#9fb3d9" point-size="14">Turing Pi 2 · 3× RK3588 + Jetson TX2 NX · Intel NUC · zullx (RTX 2070 SUPER) · RTX 5090 GaaS</font></td></tr>
-      <tr><td><font color="#c98a4a" point-size="13">starring Schwarzenegger, Seagal, Van Damme, Bruce Willis, Freddy &amp; Jason</font></td></tr>
     </table>
   >];
 }

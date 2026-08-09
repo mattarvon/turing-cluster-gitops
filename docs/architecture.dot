@@ -2,7 +2,7 @@ digraph TuringArch {
   rankdir=TB; compound=true; splines=spline;
   bgcolor="#0a0e1a";
   graph [fontname="DejaVu Sans", fontsize=24, labelloc=t, fontcolor="#e8f0ff",
-         label=<<b>PHYSICAL ARCHITECTURE — Turing Pi 2 + Peripherals</b><br/><font point-size="11" color="#7c8db5">everything wired to a MikroTik switch · static on 192.168.1.0/24</font><br/><font point-size="11" color="#c98a4a">cast of 80s heavy hitters</font>>,
+         label=<<b>PHYSICAL ARCHITECTURE — Turing Pi 2 + Peripherals</b><br/><font point-size="11" color="#7c8db5">everything wired to a MikroTik switch · static on 192.168.1.0/24</font>>,
          nodesep=0.4, ranksep=0.6, pad=0.5];
   node [shape=plaintext, fontname="DejaVu Sans"];
   edge [fontname="DejaVu Sans", fontsize=9, color="#3d4b6b", penwidth=1.3, arrowsize=0.7];
@@ -13,13 +13,11 @@ digraph TuringArch {
       <tr><td align="left"><font color="#7c8db5" point-size="9">gateway · DHCP · DNS → Pi-hole</font></td></tr></table>>];
   mikrotik [label=<<table border="3" color="#f97316" bgcolor="#231404" cellborder="0" cellspacing="0" cellpadding="9">
       <tr><td align="left"><font color="#fb923c" point-size="14"><b>MikroTik LAN switch · .233</b></font></td></tr>
-      <tr><td align="left"><font color="#f0b46a" point-size="10"><b>[ CARL WEATHERS ]</b> — everyone reports to him</font></td></tr>
       <tr><td align="left"><font color="#c98a4a" point-size="9">managed · webfig :80 · all gear wired here</font></td></tr></table>>];
 
   /* ---- Workstation + RTX 5090 ---- */
   work [label=<<table border="3" color="#a3e635" bgcolor="#151a0d" cellborder="0" cellspacing="0" cellpadding="10">
       <tr><td align="left"><font color="#bef264" point-size="15"><b>WORKSTATION · .110</b></font></td></tr>
-      <tr><td align="left"><font color="#d7ef8a" point-size="11"><b>[ DOLPH LUNDGREN ]</b> — the heavyweight</font></td></tr>
       <tr><td align="left"><font color="#d9f99d" point-size="11"><b>GPU:</b> NVIDIA RTX 5090 · 32 GB GDDR7 (Blackwell)</font></td></tr>
       <tr><td align="left"><font color="#c7d99d" point-size="10"><b>CPU:</b> AMD Ryzen 7 9800X3D (8C/16T)</font></td></tr>
       <tr><td align="left"><font color="#c7d99d" point-size="10"><b>RAM:</b> 64 GB DDR5-6000</font></td></tr>
@@ -30,24 +28,20 @@ digraph TuringArch {
   /* ---- Redundant Pi-hole DNS ---- */
   ph1 [label=<<table border="2" color="#34d399" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="7">
       <tr><td align="left"><font color="#6ee7b7" point-size="12"><b>pihole · .180 — PRIMARY</b></font></td></tr>
-      <tr><td align="left"><font color="#9ecbb4" point-size="9"><b>[ FREDDY KRUEGER ]</b></font></td></tr>
       <tr><td align="left"><font color="#8fd9b6" point-size="9">RPi 3 · Pi-hole DNS</font></td></tr></table>>];
   ph2 [label=<<table border="1" color="#2f6f52" bgcolor="#0f1f18" cellborder="0" cellspacing="0" cellpadding="7">
       <tr><td align="left"><font color="#8fd9b6" point-size="11"><b>pihole2 · .181 — BACKUP</b></font></td></tr>
-      <tr><td align="left"><font color="#7fae97" point-size="9"><b>[ JASON VOORHEES ]</b> — keeps coming back</font></td></tr>
       <tr><td align="left"><font color="#6f9a86" point-size="9">RPi 3 · DNS (nebula-sync)</font></td></tr></table>>];
 
   /* ---- The NUC ---- */
   nuc [label=<<table border="3" color="#a78bfa" bgcolor="#17122e" cellborder="0" cellspacing="0" cellpadding="9">
       <tr><td align="left"><font color="#c4b5fd" point-size="14"><b>INTEL NUC · .105</b></font></td></tr>
-      <tr><td align="left"><font color="#cbb8f0" point-size="10"><b>[ BRUCE WILLIS ]</b> — yippee-ki-yay workhorse</font></td></tr>
       <tr><td align="left"><font color="#a99cd6" point-size="10">i7-8559U + Iris Plus 655 · 31 GB · amd64</font></td></tr>
       <tr><td align="left"><font color="#8f80c0" point-size="9">K3s worker · NFS server (458 GB RWX) · KubeVirt VM host · flash host</font></td></tr></table>>];
 
   /* ---- zullx: x86 GPU worker ---- */
   zullx [label=<<table border="3" color="#22c55e" bgcolor="#0c2115" cellborder="0" cellspacing="0" cellpadding="9">
       <tr><td align="left"><font color="#4ade80" point-size="14"><b>zullx · .216 · amd64</b></font></td></tr>
-      <tr><td align="left"><font color="#9be8ac" point-size="10"><b>[ STEVEN SEAGAL ]</b> — the new muscle</font></td></tr>
       <tr><td align="left"><font color="#86efac" point-size="11"><b>GPU:</b> NVIDIA RTX 2070 SUPER · 8 GB</font></td></tr>
       <tr><td align="left"><font color="#a7d3b3" point-size="10">AMD Ryzen 7 3700X (8C/16T) · 62 GB RAM · Ubuntu 24.04</font></td></tr>
       <tr><td align="left"><font color="#86c99a" point-size="9">K3s GPU worker · nvidia.com/gpu · M.2 NVMe 860 GB → SC nvme-local</font></td></tr></table>>];
@@ -59,22 +53,18 @@ digraph TuringArch {
     sw [label=<<table border="1" color="#f59e0b" bgcolor="#241a09" cellborder="0" cellspacing="0" cellpadding="7"><tr><td><font color="#fcd34d" point-size="10"><b>On-board Gigabit switch</b>  (single RJ45 uplink)</font></td></tr></table>>];
     bmc [label=<<table border="1" color="#475569" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="7">
         <tr><td align="left"><font color="#94a3b8" point-size="11"><b>BMC (turingpi) · .100</b></font></td></tr>
-        <tr><td align="left"><font color="#7f8ea3" point-size="9"><b>[ KURT RUSSELL ]</b> · power · flash · UART</font></td></tr></table>>];
+        <tr><td align="left"><font color="#7f8ea3" point-size="9">power · flash · UART</font></td></tr></table>>];
     cp [label=<<table border="2" color="#22d3ee" bgcolor="#08283a" cellborder="0" cellspacing="0" cellpadding="8">
         <tr><td align="left"><font color="#67e8f9" point-size="12"><b>N1 · rk1-cp · .101 (RK1 #1)</b></font></td></tr>
-        <tr><td align="left"><font color="#a7e6f2" point-size="9"><b>[ SCHWARZENEGGER ]</b> — the commander</font></td></tr>
         <tr><td align="left"><font color="#7dd3e8" point-size="9">RK3588 arm64 · CONTROL PLANE (v1.36.2) · 16 GB</font></td></tr></table>>];
     jet [label=<<table border="2" color="#fb7185" bgcolor="#2a1015" cellborder="0" cellspacing="0" cellpadding="8">
         <tr><td align="left"><font color="#fda4af" point-size="12"><b>N2 · jetson-gpu · .102</b></font></td></tr>
-        <tr><td align="left"><font color="#f4b3bb" point-size="9"><b>[ VAN DAMME ]</b> — kicks above its weight</font></td></tr>
         <tr><td align="left"><font color="#e79aa5" point-size="9">Jetson TX2 NX · 256-core Pascal · nvidia.com/gpu (v1.34.9)</font></td></tr></table>>];
     w1 [label=<<table border="1" color="#3b82f6" bgcolor="#0d1b33" cellborder="0" cellspacing="0" cellpadding="7">
         <tr><td align="left"><font color="#93c5fd" point-size="11"><b>N3 · rk1-w1 · .103 (RK1 #2)</b></font></td></tr>
-        <tr><td align="left"><font color="#9db8dd" point-size="9"><b>[ STALLONE ]</b></font></td></tr>
         <tr><td align="left"><font color="#7c9cc9" point-size="8">RK3588 · 16 GB · arm64 · worker</font></td></tr></table>>];
     w2 [label=<<table border="1" color="#3b82f6" bgcolor="#0d1b33" cellborder="0" cellspacing="0" cellpadding="7">
         <tr><td align="left"><font color="#93c5fd" point-size="11"><b>N4 · rk1-w2 · .104 (RK1 #3)</b></font></td></tr>
-        <tr><td align="left"><font color="#9db8dd" point-size="9"><b>[ CHUCK NORRIS ]</b></font></td></tr>
         <tr><td align="left"><font color="#7c9cc9" point-size="8">RK3588 · 16 GB · arm64 · worker</font></td></tr></table>>];
     sw -> bmc [color="#0e7490"];
     sw -> cp  [color="#0e7490"];
