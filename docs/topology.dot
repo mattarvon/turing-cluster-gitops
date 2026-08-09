@@ -2,7 +2,7 @@ digraph Turing {
   rankdir=TB; compound=true; splines=spline; overlap=false;
   bgcolor="#0a0e1a";
   graph [fontname="DejaVu Sans", fontsize=26, labelloc=t, fontcolor="#e8f0ff",
-         label=<<b>⚡ TURING PI 2 — BARE-METAL KUBERNETES HOMELAB ⚡</b><br/><font point-size="12" color="#7c8db5">GitOps · 5 nodes (arm64 + amd64) · RTX 5090 LLMs · Jetson GPU · KubeVirt · HA DNS · full observability</font>>,
+         label=<<b>⚡ TURING PI 2 — BARE-METAL KUBERNETES CLUSTER ⚡</b><br/><font point-size="12" color="#7c8db5">GitOps · 6 nodes (arm64 + amd64) · RTX 5090 LLMs · Jetson + RTX 2070 SUPER GPUs · KubeVirt · HA DNS · full observability</font>>,
          nodesep=0.45, ranksep=0.75, pad=0.5];
   node [shape=plaintext, fontname="DejaVu Sans"];
   edge [fontname="DejaVu Sans", fontsize=9, color="#3d4b6b", penwidth=1.3, arrowsize=0.7];
@@ -41,7 +41,7 @@ digraph Turing {
 
   /* ============ PHYSICAL NODES ============ */
   subgraph cluster_nodes {
-    label=<<font color="#22d3ee" point-size="14"><b>  🧱 TURING PI 2 BOARD + NUC — K3s NODES  </b></font>>; labeljust=l;
+    label=<<font color="#22d3ee" point-size="14"><b>  🧱 TURING PI 2 + NUC + zullx — K3s NODES (6)  </b></font>>; labeljust=l;
     style="rounded,filled"; fillcolor="#0a1526"; color="#0e7490"; penwidth=2.2;
     bmc [label=<<table border="1" color="#475569" bgcolor="#0f1729" cellborder="0" cellspacing="0" cellpadding="6">
         <tr><td align="left"><font color="#94a3b8" point-size="10"><b>🔌 BMC · .100</b></font></td></tr>
@@ -61,6 +61,9 @@ digraph Turing {
     nuc [label=<<table border="2" color="#a78bfa" bgcolor="#17122e" cellborder="0" cellspacing="0" cellpadding="7">
         <tr><td align="left"><font color="#c4b5fd" point-size="12"><b>🖥 nuc-flasher · .105</b></font></td></tr>
         <tr><td align="left"><font color="#a99cd6" point-size="9">Intel i7 amd64 · worker<br align="left"/>NFS server · KubeVirt VM host</font></td></tr></table>>];
+    zullx [label=<<table border="2" color="#22c55e" bgcolor="#0c2115" cellborder="0" cellspacing="0" cellpadding="7">
+        <tr><td align="left"><font color="#4ade80" point-size="12"><b>🎯 zullx · .216 · amd64</b></font></td></tr>
+        <tr><td align="left"><font color="#86c99a" point-size="9">Ryzen 7 3700X · 62 GB · GPU WORKER<br align="left"/>RTX 2070 SUPER (8GB) · nvidia.com/gpu · NVMe 860Gi</font></td></tr></table>>];
   }
 
   /* ============ WORKLOADS BY NAMESPACE ============ */
@@ -83,6 +86,7 @@ digraph Turing {
     style="rounded,filled"; fillcolor="#1c1508"; color="#b45309"; penwidth=1.8;
     scloc [label=<<table border="1" color="#f59e0b" bgcolor="#241a09" cellborder="0" cellspacing="0" cellpadding="6"><tr><td align="left"><font color="#fcd34d" point-size="10"><b>SC local-path</b> (default)</font></td></tr><tr><td align="left"><font color="#c99a4a" point-size="8">per-node SSD</font></td></tr></table>>];
     scnfs [label=<<table border="1" color="#f59e0b" bgcolor="#241a09" cellborder="0" cellspacing="0" cellpadding="6"><tr><td align="left"><font color="#fcd34d" point-size="10"><b>SC nfs-client</b> (RWX)</font></td></tr><tr><td align="left"><font color="#c99a4a" point-size="8">NFS on NUC · ~458 GB</font></td></tr></table>>];
+    scnvme [label=<<table border="1" color="#f59e0b" bgcolor="#241a09" cellborder="0" cellspacing="0" cellpadding="6"><tr><td align="left"><font color="#fcd34d" point-size="10"><b>SC nvme-local</b> (fast)</font></td></tr><tr><td align="left"><font color="#c99a4a" point-size="8">M.2 NVMe on zullx · 860 GB</font></td></tr></table>>];
   }
 
   /* ============ ACCESS ============ */
@@ -101,6 +105,7 @@ digraph Turing {
   cp -> w2  [style=dashed, color="#1d4ed8"];
   cp -> jet [style=dashed, color="#9f1239"];
   cp -> nuc [style=dashed, color="#6d28d9", label="K3s"];
+  cp -> zullx [style=dashed, color="#16a34a"];
 
   argocd -> cp [label="syncs / self-heals", color="#34d399", penwidth=2.4, fontcolor="#6ee7b7", ltail=cluster_gitops, lhead=cluster_nodes];
   ai -> ws [label="LLM", color="#a3e635", penwidth=2.2, fontcolor="#bef264", constraint=false];
@@ -108,6 +113,7 @@ digraph Turing {
   mon -> scloc [color="#f59e0b"];
   ai  -> scnfs [color="#f59e0b"];
   vms -> scnfs [color="#f59e0b"];
+  scnvme -> zullx [style=dotted, color="#16a34a", label="M.2 on", constraint=false];
 
   { rank=same; ai; mon; vms; sys; }
 }

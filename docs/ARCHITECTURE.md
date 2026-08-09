@@ -33,6 +33,7 @@ The **Turing Pi 2 (v2.4)** carrier board holds 4 compute modules over an on-boar
 | rk1-w1 | 192.168.1.103 | N3 | Rockchip RK3588 (8-core) | 6-TOPS NPU (unused) | arm64 | 16 GB | General ARM64 worker. |
 | rk1-w2 | 192.168.1.104 | N4 | Rockchip RK3588 (8-core) | 6-TOPS NPU (unused) | arm64 | 16 GB | General ARM64 worker. |
 | nuc-flasher | 192.168.1.105 | ext | Intel i7-8559U (4c/8t) | Iris Plus 655 (QuickSync, OpenVINO) | amd64 | 31 GB | x86 worker · **NFS server** (458 GB RWX) · **KubeVirt VM host** · Jetson flash host. |
+| zullx | 192.168.1.216 | ext | AMD Ryzen 7 3700X (8c/16t) | **RTX 2070 SUPER (8 GB, TU104)** | amd64 | 62 GB | **x86 GPU worker** — `nvidia.com/gpu` (CUDA/SD/TensorRT); 1 TB M.2 NVMe → `nvme-local` SC. Ubuntu 24.04 / kernel 6.8 (cgroup v2). |
 
 Off-cluster but part of the mix:
 
@@ -48,10 +49,10 @@ on-board Gigabit switch with a single RJ45 uplink; the four modules share it.
 
 ## 2. K3s cluster
 
-- **Distribution:** K3s. Control plane `rk1-cp` on **v1.36.2+k3s1**; workers match, **except the
+- **6 nodes.** Control plane `rk1-cp` on **v1.36.2+k3s1**; workers match, **except the
   Jetson on v1.34.9** (its kernel 4.9 is cgroup v1, which k8s 1.36 removed — kept within kubelet skew).
-- **Mixed architecture:** arm64 (RK1s + Jetson) + amd64 (NUC). Use multi-arch images or pin arch
-  with `nodeSelector: kubernetes.io/arch: amd64`.
+- **Mixed architecture:** arm64 (RK1s + Jetson) + amd64 (NUC + **zullx**). Use multi-arch images or
+  pin arch with `nodeSelector: kubernetes.io/arch: amd64`.
 - **API server:** `https://192.168.1.101:6443`.
 - **cgroup notes:** NUC switched to cgroup v2 via GRUB `systemd.unified_cgroup_hierarchy=1`; the
   Jetson can't (kernel 4.9), hence its older K3s.
@@ -79,8 +80,8 @@ traefik + traefik-crd (k3s built-in 40.1.x).
   SSH **deploy key**.
 - **Flow:** `bootstrap/root.yaml` (watches `apps/`, non-recursive) → `apps/*.yaml` (Argo
   Applications) → `manifests/<app>/` (raw K8s YAML). `staged/` = declared-but-not-synced backlog.
-- **Under management now:** `gpu-device-plugin` (kube-system DaemonSet), `ollama-endpoint`
-  (ai Service). Both adopted in place, Synced/Healthy.
+- **Under management now:** `gpu-device-plugin` (Jetson DaemonSet), `ollama-endpoint` (ai Service),
+  `gpu-device-plugin-x86` (zullx NVIDIA plugin + RuntimeClass), `nvme-storage` (zullx `nvme-local` SC + PV).
 - **Adoption backlog** (`staged/`): monitoring, nfs-provisioner, KubeVirt/CDI, open-webui,
   desktop-vm, pihole-exporter, tegrastats-exporter.
 
@@ -90,6 +91,7 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 |--------------|-------------|---------|-------|
 | local-path (default) | rancher.io/local-path | per-node SSD | RWO |
 | nfs-client | nfs-subdir-external-provisioner | NUC .105 `/srv/nfs/k3s` (~458 GB) | RWX, Retain |
+| nvme-local | (static local PV, no-provisioner) | zullx .216 M.2 NVMe `/data` (860 GB) | RWO, Retain |
 
 | PVC | Namespace | Class | Size |
 |-----|-----------|-------|------|
@@ -106,6 +108,9 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 - **Jetson (in-cluster):** `nvidia-gpu-device-plugin` (squat generic-device-plugin) advertises
   `nvidia.com/gpu: 10` on the Jetson (stock NVIDIA plugin can't detect JetPack 4.6). Use with
   `runtimeClassName: nvidia` + `resources.limits: {nvidia.com/gpu: 1}`. **GitOps-managed.**
+- **zullx — RTX 2070 SUPER (in-cluster):** official NVIDIA `k8s-device-plugin` (DaemonSet, runs under
+  RuntimeClass `nvidia`) advertises `nvidia.com/gpu: 1` on zullx. Real x86 CUDA — Stable Diffusion,
+  TensorRT, bigger models than the Jetson. **GitOps-managed** (`gpu-device-plugin-x86`).
 - **RTX 5090 (GPU-as-a-service):** the workstation runs Ollama on the LAN; the cluster consumes it
   via the selector-less `ai/ollama` Service → `192.168.1.110:11434`. The rig is **not** a node
   (decoupled from Windows reboots). Open WebUI (ns `ai`) is the front-end. **GitOps-managed** (Service).

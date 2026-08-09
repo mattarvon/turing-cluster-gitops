@@ -36,6 +36,13 @@ digraph TuringArch {
       <tr><td align="left"><font color="#a99cd6" point-size="10">i7-8559U + Iris Plus 655 · 31 GB · amd64</font></td></tr>
       <tr><td align="left"><font color="#8f80c0" point-size="9">K3s worker · NFS server (458 GB RWX) · KubeVirt VM host · flash host</font></td></tr></table>>];
 
+  /* ---- zullx: x86 GPU worker ---- */
+  zullx [label=<<table border="3" color="#22c55e" bgcolor="#0c2115" cellborder="0" cellspacing="0" cellpadding="9">
+      <tr><td align="left"><font color="#4ade80" point-size="14"><b>🎯  zullx · .216 · amd64</b></font></td></tr>
+      <tr><td align="left"><font color="#86efac" point-size="11"><b>⚡ GPU:</b> NVIDIA RTX 2070 SUPER · 8 GB</font></td></tr>
+      <tr><td align="left"><font color="#a7d3b3" point-size="10">AMD Ryzen 7 3700X (8C/16T) · 62 GB RAM · Ubuntu 24.04</font></td></tr>
+      <tr><td align="left"><font color="#86c99a" point-size="9">K3s GPU worker · nvidia.com/gpu · M.2 NVMe 860 GB → SC nvme-local</font></td></tr></table>>];
+
   /* ---- The Turing Pi 2 board ---- */
   subgraph cluster_tp2 {
     label=<<font color="#22d3ee" point-size="15"><b>  🔲 TURING PI 2 (v2.4) — Mini-ITX cluster board  </b></font>>; labeljust=l;
@@ -68,6 +75,7 @@ digraph TuringArch {
   internet -> router [color="#38bdf8", penwidth=1.6];
   router -> sw   [label="LAN", color="#0e7490", penwidth=1.8, lhead=cluster_tp2];
   router -> nuc  [color="#6d28d9"];
+  router -> zullx [color="#16a34a"];
   router -> work [color="#65a30d"];
   router -> ph1  [color="#2f6f52"];
   router -> ph2  [color="#2f6f52"];
@@ -76,6 +84,7 @@ digraph TuringArch {
   cp -> jet [style=dashed, color="#9f1239", constraint=false];
   cp -> w1  [style=dashed, color="#1d4ed8", constraint=false];
   cp -> w2  [style=dashed, color="#1d4ed8", constraint=false];
+  zullx -> cp [style=dashed, color="#16a34a", label="K3s GPU worker", constraint=false, lhead=cluster_tp2]
   nuc -> cp [style=dashed, color="#6d28d9", label="K3s worker", constraint=false, lhead=cluster_tp2];
   cp -> work [label="LLM API → Ollama", color="#a3e635", penwidth=2.2, fontcolor="#bef264", constraint=false, ltail=cluster_tp2];
 }

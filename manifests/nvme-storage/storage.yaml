@@ -1,0 +1,31 @@
+# Fast node-local cluster storage backed by zullx's 1 TB M.2 NVMe (mounted at /data).
+# A no-provisioner StorageClass + a static local PV; PVCs using `nvme-local` bind
+# here and their pods land on zullx (great for GPU scratch / datasets / models).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nvme-local
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: zullx-nvme-data
+spec:
+  capacity:
+    storage: 860Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /data
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [zullx]

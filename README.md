@@ -1,4 +1,4 @@
-# 🚀 Turing Pi 2 — Bare-Metal Kubernetes Homelab
+# 🚀 Turing Pi 2 — Bare-Metal Kubernetes Cluster
 
 ![K3s](https://img.shields.io/badge/K3s-v1.36-FFC61C?logo=k3s&logoColor=black)
 ![Argo CD](https://img.shields.io/badge/GitOps-Argo%20CD-EF7B4D?logo=argo&logoColor=white)
@@ -24,6 +24,7 @@ Credentials live only in the local build doc and are never committed here.
 - **GitOps** — Argo CD (app-of-apps) reconciles everything from this git repo.
 - **GPU-as-a-service** — an RTX 5090 (32 GB) serves local LLMs (Ollama + Open WebUI) to the cluster without being a node.
 - **Schedulable Jetson GPU** — `nvidia.com/gpu` workloads (CUDA compute, raytracing, fractals) on the Tegra.
+- **Second GPU node (`zullx`)** — an AMD Ryzen / **RTX 2070 SUPER** box joined as a K3s GPU worker (62 GB RAM) with its **1 TB M.2 NVMe as fast cluster storage** (`nvme-local`).
 - **Real VMs** — KubeVirt runs a full Linux desktop alongside containers, reachable over **RDP at `192.168.1.105:32389`**.
 - **Redundant DNS** — primary + backup Pi-hole, auto-synced nightly, LAN-wide ad-blocking.
 - **458 GB shared storage** — NFS RWX served from the NUC to the whole cluster.
@@ -56,6 +57,7 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 | **Workstation** · `.110` | AMD **9800X3D** + **RTX 5090 (32 GB, Blackwell)** | 64 GB DDR5-6000 | **GPU-as-a-service**: runs Ollama on the LAN so the cluster gets local LLM inference (~208 tok/s on llama3.1:8b) without the rig being a node. Also the kubectl/admin box. |
 | **Raspberry Pi 3** · `pihole` `.180` | BCM2837 (quad A53) | 1 GB · Debian 13 | **Pi-hole DNS — PRIMARY**. Network-wide ad/tracker blocking (~319k domains). |
 | **Raspberry Pi 3** · `pihole2` `.181` | BCM2837 (quad A53) | 1 GB · Debian 13 | **Pi-hole DNS — BACKUP**. Auto-synced from primary nightly (nebula-sync); DNS survives a Pi failure. |
+| **zullx** · `.216` | AMD **Ryzen 7 3700X** (8C/16T) + **RTX 2070 SUPER (8 GB)** | 62 GB RAM · 1 TB SATA (OS) + 1 TB NVMe | **x86 K3s GPU worker** — `nvidia.com/gpu` scheduling (CUDA/Stable Diffusion/TensorRT); its **M.2 NVMe** is the `nvme-local` StorageClass (fast PVCs). Ubuntu 24.04. |
 | **AmpliFi router** · `.1` | — | — | Gateway + DHCP; hands out both Pi-holes as DNS. |
 
 ---
@@ -68,7 +70,7 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 | **GitOps** | Argo CD (app-of-apps) — this repo is the source of truth |
 | **Ingress** | Traefik (k3s built-in) + NodePort services |
 | **Storage** | local-path (per-node SSD) + `nfs-client` RWX (NFS from the NUC, ~458 GB) |
-| **GPU scheduling** | squat generic-device-plugin → `nvidia.com/gpu` on the Jetson |
+| **GPU scheduling** | `nvidia.com/gpu` — squat generic-device-plugin (Jetson) + official NVIDIA device plugin (zullx, RTX 2070 SUPER) |
 | **AI / LLM** | Ollama on the RTX 5090 + Open WebUI (ns `ai`) |
 | **Virtualization** | KubeVirt + CDI — full VMs (ns `kubevirt`/`cdi`/`vms`) |
 | **DNS** | Pi-hole v6 ×2 (HA, nebula-sync) |
@@ -112,10 +114,10 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 
 ## 📊 By the numbers
 
-- **5** nodes · **2** CPU architectures (arm64 + amd64)
-- **~34** CPU cores · **~83 GB** cluster RAM
-- **2** GPUs in play (RTX 5090 as a service + Jetson Pascal on-cluster) · **3× 6-TOPS NPUs** aboard the RK1s
-- **458 GB** shared RWX NFS · **9** namespaces · **8** Helm/GitOps-tracked stacks
+- **6** nodes · **2** CPU architectures (arm64 + amd64)
+- **~42** CPU cores · **~145 GB** cluster RAM
+- **3** GPUs in play (RTX 5090 as a service + Jetson Pascal + **RTX 2070 SUPER on zullx**) · **3× 6-TOPS NPUs** aboard the RK1s
+- **458 GB** RWX NFS **+ 860 GB** fast NVMe (`nvme-local`) · **9** namespaces
 - **7** always-on services exposed (Argo CD, Grafana, Headlamp, Open WebUI, RDP, Traefik web/websecure)
 
 ---
@@ -130,7 +132,7 @@ staged/                 Applications declared but NOT yet synced (adoption backl
 docs/                   ARCHITECTURE.md + topology & architecture diagrams (+ .dot sources)
 ```
 
-**Under Argo control now:** `gpu-device-plugin` (Jetson GPU scheduling) · `ollama-endpoint` (5090 LLM Service).
+**Under Argo control now:** `gpu-device-plugin` (Jetson) · `ollama-endpoint` (5090 LLM Service) · `gpu-device-plugin-x86` (zullx RTX 2070 SUPER) · `nvme-storage` (zullx `nvme-local` SC + PV).
 The rest of the cluster is inventoried in [`staged/`](staged/) for safe, incremental adoption.
 
 **Add an app:** drop manifests in `manifests/<app>/`, add an `Application` in `apps/<app>.yaml`, `git push` — Argo syncs it.
