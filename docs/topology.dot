@@ -72,7 +72,7 @@ digraph Turing {
       <tr><td align="left"><font color="#8ec5e0" point-size="9">• prometheus ◆15Gi · grafana ◆4Gi · alertmanager<br align="left"/>• node / process / pihole / Jetson-GPU exporters</font></td></tr></table>>];
   vms [label=<<table border="2" color="#a78bfa" bgcolor="#161033" cellborder="0" cellspacing="0" cellpadding="7">
       <tr><td align="left"><font color="#c4b5fd" point-size="12"><b>💻 ns: vms  (KubeVirt)</b></font></td></tr>
-      <tr><td align="left"><font color="#a99cd6" point-size="9">• desktop-vm · Ubuntu XFCE · RDP ◆25Gi</font></td></tr></table>>];
+      <tr><td align="left"><font color="#a99cd6" point-size="9">• desktop-vm · Ubuntu XFCE ◆25Gi<br align="left"/>► RDP 192.168.1.105:32389</font></td></tr></table>>];
   sys [label=<<table border="2" color="#94a3b8" bgcolor="#111827" cellborder="0" cellspacing="0" cellpadding="7">
       <tr><td align="left"><font color="#cbd5e1" point-size="12"><b>⚙ ns: kube-system / kubevirt / cdi</b></font></td></tr>
       <tr><td align="left"><font color="#94a3b8" point-size="9">• traefik · coredns · headlamp · metrics-server<br align="left"/>• nvidia-gpu-device-plugin · virt-* · cdi-* · nfs-provisioner</font></td></tr></table>>];

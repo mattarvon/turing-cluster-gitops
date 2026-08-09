@@ -24,7 +24,7 @@ Credentials live only in the local build doc and are never committed here.
 - **GitOps** — Argo CD (app-of-apps) reconciles everything from this git repo.
 - **GPU-as-a-service** — an RTX 5090 (32 GB) serves local LLMs (Ollama + Open WebUI) to the cluster without being a node.
 - **Schedulable Jetson GPU** — `nvidia.com/gpu` workloads (CUDA compute, raytracing, fractals) on the Tegra.
-- **Real VMs** — KubeVirt runs a full Linux desktop (RDP) alongside containers.
+- **Real VMs** — KubeVirt runs a full Linux desktop alongside containers, reachable over **RDP at `192.168.1.105:32389`**.
 - **Redundant DNS** — primary + backup Pi-hole, auto-synced nightly, LAN-wide ad-blocking.
 - **458 GB shared storage** — NFS RWX served from the NUC to the whole cluster.
 - **Full observability** — Prometheus, Grafana, Alertmanager, per-host + per-process + GPU metrics.
@@ -74,6 +74,22 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 | **DNS** | Pi-hole v6 ×2 (HA, nebula-sync) |
 | **Observability** | kube-prometheus-stack + node/process/Pi-hole/Jetson-GPU exporters |
 | **Cluster UI** | Headlamp |
+
+---
+
+## 🔗 Access & endpoints
+
+Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router.
+
+| Endpoint | Address | What |
+|----------|---------|------|
+| **KubeVirt desktop VM** | **`192.168.1.105:32389`** (RDP) | Full Ubuntu XFCE desktop VM (ns `vms`) |
+| Open WebUI | `192.168.1.101:32400` | LLM chat, backed by the RTX 5090 |
+| Grafana | `192.168.1.101:32300` | Metrics dashboards |
+| Argo CD | `192.168.1.101:32700` | GitOps UI |
+| Headlamp | `192.168.1.101:32650` | Kubernetes UI |
+| Kubernetes API | `192.168.1.101:6443` | `kubectl` |
+| Traefik ingress | `:32289` (web) / `:30145` (websecure) | Cluster ingress |
 
 ---
 
