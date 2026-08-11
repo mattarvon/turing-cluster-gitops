@@ -23,6 +23,7 @@ Credentials live only in the local build doc and are never committed here.
 - **Mixed-arch K3s (6 nodes)** — 3× ARM64 Rockchip RK1 + 1× ARM64 NVIDIA Jetson + 2× x86-64 (Intel NUC + `zullx`), one cluster.
 - **GitOps** — Argo CD (app-of-apps) reconciles everything from this git repo.
 - **GPU-as-a-service** — an RTX 5090 (32 GB) serves local LLMs (Ollama + Open WebUI) to the cluster without being a node.
+- **Hybrid LLM router (LiteLLM)** — one OpenAI-compatible endpoint that routes between **local models** (Ollama on the 5090) and the **Anthropic API** (`claude-opus` / `sonnet` / `haiku`); pick local vs Claude per chat in Open WebUI, or point any tool at it. Keys live in-cluster, never in git.
 - **Schedulable Jetson GPU** — `nvidia.com/gpu` workloads (CUDA compute, raytracing, fractals) on the Tegra.
 - **`zullx` — x86 GPU worker node** — AMD **Ryzen 7 3700X** (8C/16T) · **62 GB RAM** · **RTX 2070 SUPER (8 GB)** · Ubuntu 24.04. Schedulable `nvidia.com/gpu` (CUDA / Stable Diffusion / TensorRT); its 1 TB M.2 NVMe is the **`nvme-local`** StorageClass (860 GB fast PVCs).
 - **Real VMs** — KubeVirt runs a full Linux desktop alongside containers, reachable over **RDP at `192.168.1.105:32389`**.
