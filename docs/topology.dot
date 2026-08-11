@@ -79,7 +79,7 @@ digraph Turing {
   /* ============ WORKLOADS BY NAMESPACE ============ */
   ai [label=<<table border="2" color="#c084fc" bgcolor="#1a1030" cellborder="0" cellspacing="0" cellpadding="7">
       <tr><td align="left"><font color="#d8b4fe" point-size="12"><b>ns: ai</b></font></td></tr>
-      <tr><td align="left"><font color="#b39ddb" point-size="9">• open-webui (LLM chat) ◆5Gi<br align="left"/>• ollama Service ► .110:11434</font></td></tr></table>>];
+      <tr><td align="left"><font color="#b39ddb" point-size="9">• open-webui (LLM chat) ◆5Gi<br align="left"/>• litellm router (:32500) ► local + Claude<br align="left"/>• ollama Service ► .110:11434</font></td></tr></table>>];
   mon [label=<<table border="2" color="#38bdf8" bgcolor="#08203a" cellborder="0" cellspacing="0" cellpadding="7">
       <tr><td align="left"><font color="#7dd3fc" point-size="12"><b>ns: monitoring</b></font></td></tr>
       <tr><td align="left"><font color="#8ec5e0" point-size="9">• prometheus ◆15Gi · grafana ◆4Gi · alertmanager<br align="left"/>• node / process / pihole / Jetson-GPU exporters</font></td></tr></table>>];
@@ -102,7 +102,7 @@ digraph Turing {
   /* ============ ACCESS ============ */
   access [label=<<table border="2" color="#f472b6" bgcolor="#2a0f1e" cellborder="0" cellspacing="0" cellpadding="8">
       <tr><td align="left"><font color="#f9a8d4" point-size="12"><b>ACCESS · NodePort</b></font></td></tr>
-      <tr><td align="left"><font color="#d98cb3" point-size="9">Argo CD :32700 · Grafana :32300<br align="left"/>Headlamp :32650 · Open WebUI :32400<br align="left"/>desktop-vm RDP :32389 · Traefik :32289</font></td></tr></table>>];
+      <tr><td align="left"><font color="#d98cb3" point-size="9">Argo CD :32700 · Grafana :32300<br align="left"/>Headlamp :32650 · Open WebUI :32400<br align="left"/>LiteLLM :32500 · desktop-vm RDP :32389 · Traefik :32289</font></td></tr></table>>];
 
   /* ============ EDGES ============ */
   internet -> router [color="#38bdf8", penwidth=1.6];

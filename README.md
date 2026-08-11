@@ -71,7 +71,7 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 | **Ingress** | Traefik (k3s built-in) + NodePort services |
 | **Storage** | local-path (per-node SSD) + `nfs-client` RWX (NFS from the NUC, ~458 GB) |
 | **GPU scheduling** | `nvidia.com/gpu` — squat generic-device-plugin (Jetson) + official NVIDIA device plugin (zullx, RTX 2070 SUPER) |
-| **AI / LLM** | Ollama on the RTX 5090 + Open WebUI (ns `ai`) |
+| **AI / LLM** | Ollama on the RTX 5090 + Open WebUI + **LiteLLM router** (local + Anthropic Claude in one endpoint) (ns `ai`) |
 | **Virtualization** | KubeVirt + CDI — full VMs (ns `kubevirt`/`cdi`/`vms`) |
 | **DNS** | Pi-hole v6 ×2 (HA, nebula-sync) |
 | **Observability** | kube-prometheus-stack + node/process/Pi-hole/Jetson-GPU exporters |
@@ -86,7 +86,8 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 | Endpoint | Address | What |
 |----------|---------|------|
 | **KubeVirt desktop VM** | **`192.168.1.105:32389`** (RDP) | Full Ubuntu XFCE desktop VM (ns `vms`) |
-| Open WebUI | `192.168.1.101:32400` | LLM chat, backed by the RTX 5090 |
+| Open WebUI | `192.168.1.101:32400` | LLM chat — routes to local + Claude via LiteLLM |
+| LiteLLM (LLM router) | `192.168.1.101:32500` | One OpenAI endpoint → local Ollama + Anthropic Claude |
 | Grafana | `192.168.1.101:32300` | Metrics dashboards |
 | Argo CD | `192.168.1.101:32700` | GitOps UI |
 | Headlamp | `192.168.1.101:32650` | Kubernetes UI |
