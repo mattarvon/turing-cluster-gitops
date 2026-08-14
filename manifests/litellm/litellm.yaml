@@ -13,8 +13,11 @@ data:
       # ---- local (Ollama on the RTX 5090) ----
       - model_name: qwen3.6-a3b
         litellm_params:
-          model: ollama/qwen3.6-a3b
+          model: ollama_chat/qwen3.6-a3b
           api_base: http://ollama.ai.svc.cluster.local:11434
+          # Qwen3.6 is a thinking model; without this its chain-of-thought leaks
+          # into the response body (no opening <think> tag) and reads as gibberish.
+          think: false
       - model_name: llama3.1-local
         litellm_params:
           model: ollama/llama3.1:8b
@@ -59,7 +62,7 @@ spec:
       labels:
         app: litellm
       annotations:
-        checksum/config: "v2-qwen"
+        checksum/config: "v3-qwen-nothink"
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
