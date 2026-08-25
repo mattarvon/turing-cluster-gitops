@@ -182,7 +182,7 @@
     {
       "type": "timeseries",
       "title": "Jetson GPU utilisation",
-      "description": "Only the Jetson reports GPU metrics. The discrete GPU on the x86 node has no exporter installed, so it is invisible here.",
+      "description": "The embedded ARM GPU. The workstation's RTX 5090 has its own row below.",
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 32 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [{ "expr": "jetson_gpu_utilization_percent", "legendFormat": "GPU utilisation", "refId": "A" }],
@@ -192,11 +192,103 @@
         "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] }
     },
 
-    { "type": "row", "title": "DNS", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 }, "collapsed": false },
+    { "type": "row", "title": "RTX 5090 — local inference", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 }, "collapsed": false },
+    {
+      "type": "stat",
+      "title": "GPU busy",
+      "description": "Above a few percent means something is actively running on the 5090 — usually local model inference.",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "nvidia_smi_utilization_gpu_ratio * 100", "refId": "A" }],
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "noValue": "workstation offline",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "text", "value": null }, { "color": "green", "value": 5 }, { "color": "yellow", "value": 90 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "VRAM used",
+      "description": "A loaded model sits resident here. Ollama unloads after its keep-alive expires, and this drops back.",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes * 100", "refId": "A" }],
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100, "noValue": "workstation offline",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "text", "value": null }, { "color": "green", "value": 5 }, { "color": "yellow", "value": 85 }, { "color": "red", "value": 95 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "GPU temperature",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "nvidia_smi_temperature_gpu", "refId": "A" }],
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "celsius", "noValue": "workstation offline",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 84 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Power draw",
+      "description": "Idles near 30 W. Sustained hundreds of watts means the GPU is genuinely working.",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "nvidia_smi_power_draw_watts", "refId": "A" }],
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "watt", "noValue": "workstation offline",
+        "thresholds": { "mode": "absolute", "steps": [
+          { "color": "text", "value": null }, { "color": "green", "value": 100 }, { "color": "yellow", "value": 450 } ] } }, "overrides": [] }
+    },
+    {
+      "type": "stat",
+      "title": "Inference backend",
+      "description": "Whether Prometheus is currently scraping the workstation exporter. Down simply means the desktop is off or asleep — local models are unavailable, hosted models still work.",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "expr": "up{job=\"gpu-workstation\"} or vector(0)", "refId": "A" }],
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "fieldConfig": { "defaults": { "unit": "short",
+        "mappings": [{ "type": "value", "options": {
+          "0": { "text": "OFFLINE", "color": "text", "index": 0 },
+          "1": { "text": "AVAILABLE", "color": "green", "index": 1 } } }],
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "text", "value": null } ] } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "RTX 5090 utilisation and VRAM",
+      "description": "Both are percentages of the same device, so they share one axis honestly.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "nvidia_smi_utilization_gpu_ratio * 100", "legendFormat": "GPU utilisation", "refId": "A" },
+        { "expr": "nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes * 100", "legendFormat": "VRAM used", "refId": "B" }
+      ],
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100,
+        "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" },
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] }
+    },
+    {
+      "type": "timeseries",
+      "title": "RTX 5090 temperature and power",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "nvidia_smi_temperature_gpu", "legendFormat": "Temperature (C)", "refId": "A" },
+        { "expr": "nvidia_smi_power_draw_watts", "legendFormat": "Power (W)", "refId": "B" }
+      ],
+      "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0,
+        "custom": { "lineWidth": 2, "fillOpacity": 5, "showPoints": "never" },
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] } }, "overrides": [] }
+    },
+
+    { "type": "row", "title": "DNS", "gridPos": { "h": 1, "w": 24, "x": 0, "y": 52 }, "collapsed": false },
     {
       "type": "timeseries",
       "title": "DNS queries today",
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 40 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 53 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [{ "expr": "pihole_dns_queries_today", "legendFormat": "{{instance}}", "refId": "A" }],
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
@@ -207,7 +299,7 @@
     {
       "type": "timeseries",
       "title": "Ads blocked",
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 40 },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 53 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [{ "expr": "pihole_ads_percentage_today", "legendFormat": "{{instance}}", "refId": "A" }],
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
