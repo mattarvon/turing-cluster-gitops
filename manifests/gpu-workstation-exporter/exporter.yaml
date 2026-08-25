@@ -1,0 +1,61 @@
+# Scrapes the RTX 5090 on the Windows workstation, which is NOT a cluster node.
+#
+# Same trick as manifests/ollama-endpoint: a selector-less Service plus a
+# hand-written Endpoints object projects an off-cluster address into the cluster,
+# and a ServiceMonitor points Prometheus at it. The workstation contributes its
+# GPU to the cluster without ever joining it.
+#
+# The exporter is nvidia_gpu_exporter (wraps nvidia-smi), running on the
+# workstation on :9835 and started from the user's Startup folder.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gpu-workstation
+  namespace: monitoring
+  labels:
+    app: gpu-workstation
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9835
+      targetPort: 9835
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: gpu-workstation
+  namespace: monitoring
+  labels:
+    app: gpu-workstation
+subsets:
+  - addresses:
+      - ip: 192.168.1.110
+    ports:
+      - name: metrics
+        port: 9835
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gpu-workstation
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: gpu-workstation
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      # The workstation is a desktop: it sleeps, reboots and gets used for other
+      # things. Scrape failures here are expected and are not an alerting signal.
+      honorLabels: true
+      relabelings:
+        - targetLabel: host
+          replacement: gpu-workstation
