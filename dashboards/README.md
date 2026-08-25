@@ -54,3 +54,20 @@ Left as a manual import deliberately, so panels stay editable.
 There is no exporter for the discrete GPU on the x86 worker, so its utilisation,
 memory and temperature are invisible. Deploying DCGM exporter would close this
 and give that node the same coverage the Jetson already has.
+
+## RTX 5090 row
+
+The workstation GPU doing local inference is scraped by `nvidia_gpu_exporter`
+running on the workstation itself (`E:\tools\nvidia_gpu_exporter`, port 9835,
+launched from the user's Startup folder). Prometheus reaches it via the
+ScrapeConfig in `manifests/gpu-workstation-exporter/`.
+
+Two gotchas worth remembering:
+
+- **The `job` label is `scrapeConfig/monitoring/gpu-workstation`**, not
+  `gpu-workstation`. Filtering on `job="gpu-workstation"` silently matches
+  nothing. Use `host="gpu-workstation"`, which the ScrapeConfig sets explicitly.
+- **The target being down is normal.** The workstation is a desktop that sleeps
+  and reboots. Down means local inference is unavailable, not that something has
+  broken — hosted models keep working. The panels read "workstation offline"
+  rather than showing zero, so an absent GPU is never mistaken for an idle one.

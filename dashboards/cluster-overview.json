@@ -246,7 +246,7 @@
       "description": "Whether Prometheus is currently scraping the workstation exporter. Down simply means the desktop is off or asleep — local models are unavailable, hosted models still work.",
       "gridPos": { "h": 4, "w": 8, "x": 16, "y": 40 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "up{job=\"gpu-workstation\"} or vector(0)", "refId": "A" }],
+      "targets": [{ "expr": "up{host=\"gpu-workstation\"} or vector(0)", "refId": "A" }],
       "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } },
       "fieldConfig": { "defaults": { "unit": "short",
         "mappings": [{ "type": "value", "options": {
