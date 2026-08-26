@@ -73,3 +73,19 @@ failure domains independent.
 **Drop the Service indirection and point LiteLLM at the address directly.**
 Simplest of all, and genuinely tempting — but it discards the stable in-cluster
 name that any future consumer of the GPU would use.
+
+## This has a shelf life
+
+Kubernetes reports `v1 Endpoints is deprecated in v1.33+; use
+discovery.k8s.io/v1 EndpointSlice`. This cluster is already past that, so the
+object works but is on borrowed time.
+
+The migration is not a straight swap, because **Argo excludes `EndpointSlice`
+too** — moving to it changes nothing about the problem this directory exists to
+solve. When `Endpoints` is finally removed, the realistic options narrow to:
+
+- removing `EndpointSlice` from `resource.exclusions` so the manifest can live
+  under `manifests/` and self-heal, or
+- keeping a hand-applied `EndpointSlice` here and carrying on as now.
+
+Worth deciding before the API disappears rather than during an upgrade.
