@@ -145,3 +145,26 @@ The rest of the cluster is inventoried in [`staged/`](staged/) for safe, increme
 
 No plaintext credentials in this repo. Secret-bearing apps are adopted only after Sealed/External
 Secrets is in place, or their Secrets stay applied out-of-band.
+
+## Rebuilding this cluster
+
+**This repository is not sufficient on its own.** Two classes of resource never
+reach the cluster from here:
+
+- **Secrets**, deliberately (see above).
+- **`Endpoints` and `EndpointSlice`**, because Argo CD excludes them cluster-wide.
+  An Application containing one reports **Synced and Healthy while never creating
+  it** — which for `ai/ollama` means the Service exists, DNS resolves, LiteLLM
+  connects, and every inference request goes nowhere.
+
+The full procedure is in [bootstrap/README.md](bootstrap/README.md). After any
+rebuild:
+
+```bash
+./bootstrap/apply-out-of-band.sh
+```
+
+`verify` mode is read-only and checks the same things, including scanning every
+Application for excluded-resource warnings so a *new* instance of this problem
+surfaces as a warning rather than a mystery outage months later. Worth running
+whenever local models stop responding for no visible reason.

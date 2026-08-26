@@ -1,0 +1,32 @@
+# Backs the selector-less ai/ollama Service with the RTX 5090 workstation.
+#
+# THIS FILE IS NOT MANAGED BY ARGO CD. Argo excludes Endpoints and EndpointSlice
+# cluster-wide (argocd-cm resource.exclusions), so an Endpoints object committed
+# under manifests/ is silently ignored - the Application still reports Synced
+# while the Service ends up with no backend and local inference fails with no
+# obvious cause.
+#
+# Apply it with bootstrap/apply-out-of-band.sh, which is part of the rebuild
+# procedure in the README.
+#
+# Kept as a hardcoded address on purpose. An ExternalName Service pointing at
+# nullx.lan would be fully Argo-managed and would follow DHCP, but it would make
+# local inference depend on LAN DNS - so a Pi-hole outage would take the
+# inference path down with it. The IP keeps those failures independent.
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: ollama
+  namespace: ai
+  labels:
+    app.kubernetes.io/managed-by: bootstrap-script
+  annotations:
+    turing-cluster/why-not-gitops: >-
+      Argo CD excludes core/Endpoints. See bootstrap/README.md.
+subsets:
+  - addresses:
+      - ip: 192.168.1.110
+    ports:
+      - name: http
+        port: 11434
+        protocol: TCP
