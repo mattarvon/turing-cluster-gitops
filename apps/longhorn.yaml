@@ -1,0 +1,90 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.longhorn.io
+    chart: longhorn
+    targetRevision: 1.12.1
+    helm:
+      values: |
+        # ---------------------------------------------------------------------
+        # Storage nodes: the two x86 boxes only.
+        #
+        # The ARM boards have 10-18 GiB free and jetson-gpu has 5 GiB, so they
+        # cannot hold useful replicas. More importantly Longhorn replicates
+        # SYNCHRONOUSLY - the slowest replica sets the pace for the volume - so
+        # a replica on an RK1 (5,288 write IOPS, 128 ms p99) would drag an
+        # NVMe-backed volume down to eMMC speed. Measured numbers are in
+        # benchmarks/results/README.md.
+        # ---------------------------------------------------------------------
+        defaultSettings:
+          # Only nodes explicitly labelled storage=longhorn take replicas.
+          createDefaultDiskLabeledNodes: true
+          defaultDataPath: /var/lib/longhorn
+          # Two storage nodes, so two replicas. Three would leave one volume
+          # permanently degraded and Longhorn warning about it forever.
+          defaultReplicaCount: 2
+          # Do not put replicas on the node running the workload by preference;
+          # spread them so a node loss is survivable.
+          replicaSoftAntiAffinity: false
+          replicaAutoBalance: best-effort
+          # Reclaim space when volumes shrink.
+          storageOverProvisioningPercentage: 150
+          storageMinimalAvailablePercentage: 15
+          # This cluster reboots nodes for kernel updates; do not panic-rebuild
+          # replicas the moment a node blips.
+          nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+          replicaReplenishmentWaitInterval: 1800
+          orphanAutoDeletion: true
+
+        # Longhorn's own components must avoid the ARM nodes: several images are
+        # amd64-only and the engine is not worth running on the small boards.
+        longhornManager:
+          nodeSelector:
+            kubernetes.io/arch: amd64
+        longhornDriver:
+          nodeSelector:
+            kubernetes.io/arch: amd64
+        longhornUI:
+          replicas: 1
+          nodeSelector:
+            kubernetes.io/arch: amd64
+
+        persistence:
+          # Do NOT take over as cluster default. local-path stays default so
+          # nothing silently migrates; opt in per PVC with storageClassName.
+          defaultClass: false
+          defaultClassReplicaCount: 2
+          reclaimPolicy: Retain
+
+        service:
+          ui:
+            type: NodePort
+            nodePort: 32800
+
+        # The dashboard is on the LAN with no auth in front of it. Fine here,
+        # worth knowing.
+        ingress:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  # Longhorn CRDs are large; give the initial sync room.
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/preserveUnknownFields

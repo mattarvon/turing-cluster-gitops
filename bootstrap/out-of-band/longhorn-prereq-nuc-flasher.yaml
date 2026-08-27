@@ -1,0 +1,54 @@
+# Longhorn prerequisite on nuc-flasher: open-iscsi installed, iscsid running.
+#
+# Longhorn attaches volumes over iSCSI, so every node that hosts a replica needs
+# iscsid running. Without it the node simply refuses to schedule replicas, with
+# an error that does not obviously point at iscsid.
+#
+# nuc-flasher has no SSH access from the workstation, so this uses the same
+# host-namespace pod pattern as the other out-of-band node work.
+#
+# Only the two x86 nodes are Longhorn storage nodes - the ARM boards have
+# 10-18 GiB free, which is not enough to be useful, and jetson-gpu has 5 GiB.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: longhorn-prereq-nuc-flasher
+  namespace: default
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: nuc-flasher
+  hostPID: true
+  hostNetwork: true
+  containers:
+    - name: prereq
+      image: alpine:3.20
+      securityContext:
+        privileged: true
+      command:
+        - nsenter
+        - "--target"
+        - "1"
+        - "--mount"
+        - "--uts"
+        - "--ipc"
+        - "--net"
+        - "--pid"
+        - "--"
+        - sh
+        - -c
+        - |
+          set -e
+          echo "host: $(hostname)"
+          echo "before: iscsid=$(systemctl is-active iscsid 2>/dev/null || echo absent)"
+          if ! dpkg -l open-iscsi >/dev/null 2>&1; then
+              DEBIAN_FRONTEND=noninteractive apt-get update -qq
+              DEBIAN_FRONTEND=noninteractive apt-get install -y open-iscsi
+          else
+              echo "open-iscsi already installed"
+          fi
+          modprobe iscsi_tcp || true
+          systemctl enable --now iscsid
+          echo "after : iscsid=$(systemctl is-active iscsid)"
+          echo "nfs   : $(command -v mount.nfs || echo MISSING)"
+          echo "free  : $(df -h / | tail -1 | awk '{print $4}')"
