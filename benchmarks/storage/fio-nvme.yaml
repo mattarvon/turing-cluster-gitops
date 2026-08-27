@@ -1,0 +1,84 @@
+# Storage benchmark: the nvme-local class (zullx's M.2 NVMe at /data).
+#
+# WHY THIS EXISTS
+# `local-path` on zullx is NOT the NVMe. It provisions under
+# /var/lib/rancher/k3s/storage, which is on / - the SATA SSD. The first run of
+# this benchmark reported "zullx local" at 543 MiB/s, which is SATA III
+# saturating, and labelled it NVMe. This measures the actual M.2.
+#
+# NOTE ON CLEANUP: the nvme-local PV is Retain, so deleting the PVC leaves it
+# Released rather than Available. storage/run-nvme.sh clears the claimRef
+# afterwards; if you apply this by hand, do that yourself or the class is
+# unusable until you do.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fio-nvme
+  namespace: default
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: nvme-local
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fio-nvme
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: fio
+          image: alpine:3.20
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              apk add --no-cache fio >/dev/null
+              cd /data
+              echo "=================================================="
+              echo "storage class : nvme-local (M.2 NVMe, node-local)"
+              echo "node          : $NODE_NAME"
+              echo "=================================================="
+              for job in \
+                "seqread:read:1M:1" \
+                "seqwrite:write:1M:1" \
+                "randread4k:randread:4k:8" \
+                "randwrite4k:randwrite:4k:8"
+              do
+                name=$(echo "$job" | cut -d: -f1)
+                rw=$(echo "$job"   | cut -d: -f2)
+                bs=$(echo "$job"   | cut -d: -f3)
+                jobs=$(echo "$job" | cut -d: -f4)
+                echo
+                echo "--- $name ($rw, bs=$bs, jobs=$jobs) ---"
+                # No --directory here: fio writes into the cwd. Passing a path
+                # that does not exist makes fio exit silently under 2>/dev/null,
+                # which looks exactly like a successful run producing no output.
+                fio --name="$name" --rw="$rw" --bs="$bs" --numjobs="$jobs" \
+                    --size=512M --runtime=30 --time_based --direct=1 \
+                    --ioengine=libaio --iodepth=16 --group_reporting \
+                    --output-format=normal 2>/dev/null \
+                  | grep -E "read:|write:|clat percentiles|99.00th|IOPS=" \
+                  | head -6
+              done
+              rm -f /data/*.0 2>/dev/null || true
+              echo
+              echo "done"
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: fio-nvme

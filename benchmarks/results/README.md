@@ -148,16 +148,42 @@ sequential read and 57,200 random-read IOPS** — 8× the ARM node's random read
 Storage quality varies enormously across this fleet, and "local-path" means
 something completely different depending on which node a pod lands on.
 
-### Completing the matrix: the same test on x86
+### Completing the matrix — and a correction
 
-Once zullx could mount NFS, the same run there finished the picture.
+Once zullx could mount NFS, the same run there finished the picture. It also
+exposed a mislabelling in the first write-up: **`local-path` on zullx is not the
+NVMe.** It provisions under `/var/lib/rancher/k3s/storage`, which is on `/` —
+the SATA SSD. The 543 MiB/s reported as "NVMe" was SATA III saturating at its
+ceiling. The real M.2 was measured separately via the `nvme-local` class:
 
-| | rk1-w1 local | rk1-w1 NFS | **zullx local** | zullx NFS |
-|---|---:|---:|---:|---:|
-| Seq read | 310 MiB/s | 111 MiB/s | **543 MiB/s** | 111 MiB/s |
-| Seq write | 82 MiB/s | 112 MiB/s | **481 MiB/s** | 112 MiB/s |
-| Rand 4K read | 7,166 | 25,500 | **57,200** | 27,600 |
-| Rand 4K write | 5,288 | 1,907 | **48,400** | 1,890 |
+| | rk1-w1 local | rk1-w1 NFS | zullx SATA<br>(`local-path`) | zullx NFS | **zullx NVMe<br>(`nvme-local`)** |
+|---|---:|---:|---:|---:|---:|
+| Seq read | 310 MiB/s | 111 MiB/s | 543 MiB/s | 111 MiB/s | **3,404 MiB/s** |
+| Seq write | 82 MiB/s | 112 MiB/s | 481 MiB/s | 112 MiB/s | **2,420 MiB/s** |
+| Rand 4K read | 7,166 | 25,500 | 57,200 | 27,600 | **560,000** |
+| Rand 4K write | 5,288 | 1,907 | 48,400 | 1,890 | **507,000** |
+
+The NVMe is **10× the SATA drive**, ~70× the ARM node's local storage on random
+reads, and **265× NFS on random writes**. Those figures sit right at the Samsung
+970 EVO's rated spec, so they are real rather than cache artefacts.
+
+### The idle asset
+
+That drive is **870 GB free and doing nothing**. The `nvme-local` StorageClass
+and its static PV already exist in this repo and are Synced — and have **zero
+PVCs bound**. The fastest storage in the cluster by an order of magnitude has
+never been used.
+
+Meanwhile **Prometheus — a write-heavy time-series database — is on
+`local-path` on `rk1-w1`**, which is the *slowest* storage measured anywhere in
+the fleet: 5,288 random write IOPS with a p99 of 128 ms and p99.9 of 541 ms.
+
+That is close to the worst possible placement of the cluster's most
+storage-sensitive workload, and the remedy is a `storageClassName` change.
+Caveat worth stating: `nvme-local` is RWO with node affinity, so it pins that
+pod to zullx permanently. Prometheus is already pinned to rk1-w1 by `local-path`
+today, so this trades one pin for a much faster one rather than giving anything
+up.
 
 Two things fall out of it.
 
@@ -175,7 +201,10 @@ workload lands on.
 
 ### What to do with this
 
-- **On x86 nodes, prefer `local-path`** for anything performance-sensitive. The
+- **On zullx, use `nvme-local`, not `local-path`.** They are different drives:
+  `local-path` is the SATA SSD, `nvme-local` is the M.2 that is 10x faster and
+  currently unused.
+- **On x86 nodes, prefer node-local storage** for anything performance-sensitive. The
   NVMe there is dramatically faster than the network, and 48,400 random write
   IOPS against NFS's 1,890 is not a close call.
 - **On ARM nodes, NFS is often the better choice** — faster random reads and far
