@@ -13,6 +13,13 @@ spec:
     targetRevision: 1.12.1
     helm:
       values: |
+        # The chart's pre-upgrade hook Job runs in Argo's PreSync phase, before
+        # the ServiceAccount it needs has been created, so it hangs forever on
+        # "serviceaccount longhorn-service-account not found". It only exists to
+        # check upgrade compatibility, which is meaningless on a fresh install.
+        preUpgradeChecker:
+          jobEnabled: false
+
         # ---------------------------------------------------------------------
         # Storage nodes: the two x86 boxes only.
         #
