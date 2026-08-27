@@ -29,6 +29,10 @@ spec:
   template:
     spec:
       restartPolicy: Never
+      # Both storage tests pin to the same node so the comparison is like-for-like,
+      # and deliberately NOT the NFS server, so NFS traffic crosses the network.
+      nodeSelector:
+        kubernetes.io/hostname: rk1-w1
       containers:
         - name: fio
           image: alpine:3.20

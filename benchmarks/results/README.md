@@ -106,3 +106,81 @@ Stop-Process -Name "ollama app","ollama","llama-server" -Force
   and will be worse.
 - Cold start for the 22 GB model is **~14 s**. With a 5 minute keep-alive, the
   first request after an idle spell pays it.
+
+---
+
+## Storage — 2026-08-27
+
+`fio`, four profiles, 30 s each, `direct=1`, iodepth 16. Both classes measured
+from the **same node** (`rk1-w1`, arm64) so the comparison is like-for-like, and
+deliberately not from the NFS server, so NFS traffic crosses the network.
+
+| Profile | local-path | nfs-client | Winner |
+|---------|-----------:|-----------:|--------|
+| Sequential read | **310 MiB/s** | 111 MiB/s | local, 2.8× |
+| Sequential write | 82 MiB/s | **112 MiB/s** | **NFS** |
+| Random 4K read | 7,166 IOPS | **25,500 IOPS** | **NFS, 3.6×** |
+| Random 4K write | **5,288 IOPS** | 1,907 IOPS | local, 2.8× |
+
+Tail latency (p99), which is what a VM or database actually feels:
+
+| Profile | local-path | nfs-client |
+|---------|-----------:|-----------:|
+| Random 4K read | 34.9 ms | **8.0 ms** |
+| Random 4K write | **128 ms** (p99.9: **541 ms**) | **0.22 ms** |
+
+### The finding: NFS is not the villain here — the ARM node's local disk is
+
+This inverts the assumption the benchmark was built to test. On `rk1-w1`, NFS
+beats local storage on three of four measures that matter, and it is not close:
+
+- **Random reads are 3.6× faster over NFS.** The NFS server has a real NVMe and
+  page cache behind it; the ARM node's local storage does not.
+- **Local random-write tail latency is catastrophic** — 128 ms at p99 and
+  **541 ms at p99.9**, against 0.22 ms over NFS. A workload doing small writes
+  on `local-path` on an ARM node will stall visibly.
+- **Sequential read is the only clear local win**, and NFS's 111 MiB/s is not a
+  storage limit at all: it is ~940 Mbit/s, i.e. the gigabit network. NFS
+  sequential throughput is network-capped, exactly as predicted.
+
+For contrast, `local-path` on **zullx** (x86, NVMe) managed **543 MiB/s
+sequential read and 57,200 random-read IOPS** — 8× the ARM node's random reads.
+Storage quality varies enormously across this fleet, and "local-path" means
+something completely different depending on which node a pod lands on.
+
+### What to do with this
+
+- **Do not reflexively move things off NFS.** For workloads on ARM nodes it is
+  usually the faster option, and dramatically better for tail latency.
+- **`local-path` on an ARM node is a poor default** for anything write-heavy.
+  It is the cluster default, so this is easy to get by accident.
+- **The NFS argument is availability, not performance.** The single unreplicated
+  server remains the problem; its speed does not.
+- **Sequential NFS work is network-bound.** Faster disks in the NFS server would
+  change nothing without faster networking.
+
+### Related discovery: the VM has no failover target
+
+The first attempt to run this benchmark failed because **`zullx` cannot mount
+NFS at all** — `mount.nfs` is missing, so `nfs-common` is not installed. Every
+other node mounts fine:
+
+| Node | NFS mount |
+|------|-----------|
+| rk1-cp, rk1-w1, rk1-w2, nuc-flasher | OK |
+| **zullx** | **FailedMount** |
+
+That matters more than it first appears. VM workloads are x86-only, and there
+are exactly two x86 nodes: `nuc-flasher` (which is also the NFS server) and
+`zullx`. The desktop VM's disk is an RWX volume on NFS.
+
+So if `nuc-flasher` fails, the VM **cannot start anywhere** — `zullx` is the only
+other node that could run it, and it cannot mount the disk.
+
+Fix, on zullx:
+
+```bash
+sudo apt-get install -y nfs-common
+```
+
+One package turns a total-loss scenario into an ordinary reschedule.
