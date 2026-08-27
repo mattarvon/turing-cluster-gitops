@@ -50,14 +50,24 @@ spec:
           replicaReplenishmentWaitInterval: 1800
           orphanAutoDeletion: true
 
-        # Longhorn's own components must avoid the ARM nodes: several images are
-        # amd64-only and the engine is not worth running on the small boards.
+        # WHERE REPLICAS LIVE and WHERE VOLUMES CAN BE MOUNTED are different
+        # questions, and conflating them is a trap. Replica placement is already
+        # restricted to the two x86 nodes by the
+        # node.longhorn.io/create-default-disk label. The CSI driver, by
+        # contrast, must run on every node that needs to MOUNT a Longhorn
+        # volume - restricting it to amd64 left ARM pods stuck forever in
+        # ContainerCreating, which is exactly the case we care about, since
+        # Prometheus runs on an ARM node and is the workload most worth moving.
+        #
+        # So: run on everything labelled longhorn.io/enabled, which is every
+        # node except jetson-gpu. That one is on Ubuntu 18.04 / kernel 4.9 with
+        # 5 GiB free and is not a sensible Longhorn host.
         longhornManager:
           nodeSelector:
-            kubernetes.io/arch: amd64
+            longhorn.io/enabled: "true"
         longhornDriver:
           nodeSelector:
-            kubernetes.io/arch: amd64
+            longhorn.io/enabled: "true"
         longhornUI:
           replicas: 1
           nodeSelector:
