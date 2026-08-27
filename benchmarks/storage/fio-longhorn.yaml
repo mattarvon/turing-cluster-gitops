@@ -16,7 +16,7 @@ spec:
   storageClassName: longhorn
   resources:
     requests:
-      storage: 4Gi
+      storage: 16Gi
 ---
 apiVersion: batch/v1
 kind: Job

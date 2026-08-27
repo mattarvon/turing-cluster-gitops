@@ -248,3 +248,58 @@ has no SSH access from the workstation — `ubuntu`, `matt` and `root` were all
 refused with the available keys. Verified afterwards by scheduling a pod with an
 NFS PVC onto zullx and writing to it: **NFS_READ_WRITE_OK**. The desktop VM now
 has a real failover target.
+
+---
+
+## Longhorn — 2026-08-27
+
+Same harness, same client node (`rk1-w1`), so directly comparable to the numbers
+above. Two replicas, on zullx's NVMe and nuc-flasher.
+
+| Profile | local-path | nfs-client | **longhorn** |
+|---------|-----------:|-----------:|-------------:|
+| Sequential read | 310 MiB/s | 111 MiB/s | 103 MiB/s |
+| Sequential write | 82 MiB/s | 112 MiB/s | 87 MiB/s |
+| Random 4K read | 7,166 | 25,500 | 21,500 |
+| Random 4K write | 5,288 | 1,907 | **3,448** |
+
+### Replication is close to free here
+
+Longhorn lands within ~15 % of NFS on reads and **beats it 1.8× on random
+writes** — which is NFS's weakest profile and the one that hurts databases and
+VM disks most. It does that while writing every block to *two* nodes instead of
+one, so it is doing roughly double the network work for the same result.
+
+The reason both cluster around 103–112 MiB/s sequentially is that neither is
+disk-bound: that is gigabit line rate. Longhorn cannot beat NFS on sequential
+throughput on this network, and neither can anything else.
+
+So the trade is not "pay performance for redundancy". At worst it is a small
+sequential-read regression; on the profile that matters most it is a gain. What
+you actually buy is that losing a node stops being a data-loss event.
+
+### What has not moved yet
+
+Longhorn is deployed and `local-path` remains the cluster default, deliberately
+— nothing migrated on its own. Volumes worth moving, in order:
+
+1. **Prometheus** (`local-path` on rk1-w1). Currently on the slowest storage
+   measured anywhere — 128 ms p99 writes — on a node with **10.5 GiB free** and
+   a nominal 15 Gi PVC. `local-path` does not enforce PVC size, so it can fill
+   the node's disk. This is a capacity problem as much as a performance one.
+2. **The desktop VM disk** (`nfs-client`). The reason the VM has a single point
+   of failure today.
+3. **Open WebUI data** (`nfs-client`). Small, low risk, a good first migration
+   to practise on.
+
+None can be migrated in place — a PVC's storage class is immutable, so each
+means create-new, copy, swap.
+
+### Operational notes
+
+- `reclaimPolicy: Retain` means deleting a PVC leaves the Longhorn volume and PV
+  behind as `Released`. Deliberate, but it needs housekeeping: three orphans
+  accumulated from three benchmark runs and had to be removed by hand.
+- The benchmark's first Longhorn run silently produced no `randwrite4k` result
+  because a 4 GiB volume ran out of room after the earlier profiles laid out
+  their files. Test volumes need to be several times the fio working set.
