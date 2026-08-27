@@ -184,3 +184,10 @@ sudo apt-get install -y nfs-common
 ```
 
 One package turns a total-loss scenario into an ordinary reschedule.
+
+**Fixed 2026-08-27.** Installed via a privileged pod that enters the host
+namespace (`bootstrap/out-of-band/install-nfs-client-zullx.yaml`), because zullx
+has no SSH access from the workstation — `ubuntu`, `matt` and `root` were all
+refused with the available keys. Verified afterwards by scheduling a pod with an
+NFS PVC onto zullx and writing to it: **NFS_READ_WRITE_OK**. The desktop VM now
+has a real failover target.
