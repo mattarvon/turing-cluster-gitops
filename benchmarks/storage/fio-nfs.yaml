@@ -1,0 +1,78 @@
+# Storage benchmark: NFS (the nfs-client storage class).
+#
+# This is the class that backs every RWX volume in the cluster - VM disks, chat
+# history, the bulk share - and it is served by a single node with no
+# replication. Compare against fio-local-path.yaml.
+#
+# Expect sequential throughput to be capped by the network (see network/), and
+# 4K random latency to be markedly worse than local disk. How much worse is the
+# question that decides whether replicated block storage is overdue.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fio-nfs
+  namespace: default
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fio-nfs
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: fio
+          image: alpine:3.20
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              apk add --no-cache fio >/dev/null
+              cd /data
+              echo "=================================================="
+              echo "storage class : nfs-client (network, single NFS node)"
+              echo "node          : $NODE_NAME"
+              echo "=================================================="
+              for job in \
+                "seqread:read:1M:1" \
+                "seqwrite:write:1M:1" \
+                "randread4k:randread:4k:8" \
+                "randwrite4k:randwrite:4k:8"
+              do
+                name=$(echo "$job" | cut -d: -f1)
+                rw=$(echo "$job"   | cut -d: -f2)
+                bs=$(echo "$job"   | cut -d: -f3)
+                jobs=$(echo "$job" | cut -d: -f4)
+                echo
+                echo "--- $name ($rw, bs=$bs, jobs=$jobs) ---"
+                fio --name="$name" --rw="$rw" --bs="$bs" --numjobs="$jobs" \
+                    --size=512M --runtime=30 --time_based --direct=1 \
+                    --ioengine=libaio --iodepth=16 --group_reporting \
+                    --output-format=normal 2>/dev/null \
+                  | grep -E "read:|write:|clat percentiles|99.00th|IOPS=" \
+                  | head -6
+              done
+              rm -f /data/*.0 2>/dev/null || true
+              echo
+              echo "done"
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: fio-nfs

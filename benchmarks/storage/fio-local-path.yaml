@@ -1,0 +1,78 @@
+# Storage benchmark: node-local disk (default storage class).
+#
+# Uses a plain alpine image and installs fio at runtime rather than a prebuilt
+# fio image, because most of those publish amd64 only and two thirds of this
+# cluster is arm64.
+#
+# Run the NFS variant too and compare. The number that matters is 4K random
+# latency, not sequential throughput - that is what a VM disk and a database
+# feel, and it is where network storage hurts.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fio-local-path
+  namespace: default
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fio-local-path
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: fio
+          image: alpine:3.20
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              apk add --no-cache fio >/dev/null
+              cd /data
+              echo "=================================================="
+              echo "storage class : local-path (node-local)"
+              echo "node          : $NODE_NAME"
+              echo "=================================================="
+              for job in \
+                "seqread:read:1M:1" \
+                "seqwrite:write:1M:1" \
+                "randread4k:randread:4k:8" \
+                "randwrite4k:randwrite:4k:8"
+              do
+                name=$(echo "$job" | cut -d: -f1)
+                rw=$(echo "$job"   | cut -d: -f2)
+                bs=$(echo "$job"   | cut -d: -f3)
+                jobs=$(echo "$job" | cut -d: -f4)
+                echo
+                echo "--- $name ($rw, bs=$bs, jobs=$jobs) ---"
+                fio --name="$name" --rw="$rw" --bs="$bs" --numjobs="$jobs" \
+                    --size=512M --runtime=30 --time_based --direct=1 \
+                    --ioengine=libaio --iodepth=16 --group_reporting \
+                    --output-format=normal 2>/dev/null \
+                  | grep -E "read:|write:|clat percentiles|99.00th|IOPS=" \
+                  | head -6
+              done
+              rm -f /data/*.0 2>/dev/null || true
+              echo
+              echo "done"
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: fio-local-path

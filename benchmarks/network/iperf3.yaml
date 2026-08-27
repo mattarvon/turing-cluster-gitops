@@ -1,0 +1,91 @@
+# Network benchmark: pod-to-pod across nodes, including CNI overhead.
+#
+# Alpine plus apk rather than a prebuilt iperf3 image, because the common ones
+# are amd64 only and most of this cluster is arm64.
+#
+# Apply the server first, then edit the client's nodeSelector to a DIFFERENT
+# node and apply that. Pointing the client at the node running the NFS server
+# gives the ceiling that every storage number sits underneath - if this tops
+# out at ~940 Mbit/s, no amount of NFS tuning beats it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: iperf3-server
+  namespace: default
+spec:
+  selector:
+    app: iperf3-server
+  ports:
+    - name: iperf
+      port: 5201
+      targetPort: 5201
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iperf3-server
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iperf3-server
+  template:
+    metadata:
+      labels:
+        app: iperf3-server
+    spec:
+      # Pin the server so results are reproducible run to run.
+      nodeSelector:
+        kubernetes.io/hostname: nuc-flasher
+      containers:
+        - name: iperf3
+          image: alpine:3.20
+          command: ["/bin/sh", "-c"]
+          args:
+            - apk add --no-cache iperf3 >/dev/null && iperf3 --server
+          ports:
+            - containerPort: 5201
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: iperf3-client
+  namespace: default
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      # CHANGE THIS to the node you want to measure from.
+      nodeSelector:
+        kubernetes.io/hostname: rk1-w1
+      containers:
+        - name: iperf3
+          image: alpine:3.20
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              apk add --no-cache iperf3 >/dev/null
+              echo "=================================================="
+              echo "client node : $NODE_NAME"
+              echo "target      : iperf3-server.default.svc.cluster.local"
+              echo "=================================================="
+              echo
+              echo "--- upload (client -> server), 20s ---"
+              iperf3 -c iperf3-server.default.svc.cluster.local -t 20 -f m \
+                | tail -5
+              echo
+              echo "--- download (server -> client), 20s ---"
+              iperf3 -c iperf3-server.default.svc.cluster.local -t 20 -f m -R \
+                | tail -5
+              echo
+              echo "--- parallel streams (8), 20s ---"
+              iperf3 -c iperf3-server.default.svc.cluster.local -t 20 -f m -P 8 \
+                | tail -4
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
