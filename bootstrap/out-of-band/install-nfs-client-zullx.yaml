@@ -1,0 +1,55 @@
+# One-shot: install the NFS client on zullx.
+#
+# WHY THIS EXISTS
+# zullx was the only node in the cluster without `nfs-common`, so it could not
+# mount any RWX volume - the mount failed with "you might need a
+# /sbin/mount.nfs helper program".
+#
+# That is not cosmetic. VM workloads are x86-only and there are exactly two x86
+# nodes: nuc-flasher (which is also the NFS server) and zullx. The desktop VM's
+# disk is an RWX volume on NFS. So with zullx unable to mount it, losing
+# nuc-flasher meant the VM could not start anywhere at all.
+#
+# STATUS: applied 2026-08-27. zullx now has nfs-common 1:2.6.4-3ubuntu5.1
+# and mount.nfs at /usr/sbin/mount.nfs; a read-write mount of an NFS PVC on
+# zullx was verified afterwards. Kept here so a rebuilt zullx gets it again.
+#
+# Run with kubectl apply, then check the logs. Delete when done.
+# Re-runnable: apt-get install on an already-installed package is a no-op.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: install-nfs-client-zullx
+  namespace: default
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: zullx
+  # Enter the host's namespaces so apt runs against the node, not the container.
+  hostPID: true
+  hostNetwork: true
+  containers:
+    - name: installer
+      image: alpine:3.20
+      securityContext:
+        privileged: true
+      command:
+        - nsenter
+        - "--target"
+        - "1"
+        - "--mount"
+        - "--uts"
+        - "--ipc"
+        - "--net"
+        - "--pid"
+        - "--"
+        - sh
+        - -c
+        - |
+          set -e
+          echo "host: $(hostname)"
+          echo "before: $(command -v mount.nfs || echo 'mount.nfs ABSENT')"
+          DEBIAN_FRONTEND=noninteractive apt-get update -qq
+          DEBIAN_FRONTEND=noninteractive apt-get install -y nfs-common
+          echo "after : $(command -v mount.nfs || echo 'STILL ABSENT')"
+          dpkg -l nfs-common | tail -1
