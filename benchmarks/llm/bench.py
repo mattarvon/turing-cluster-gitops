@@ -72,7 +72,12 @@ def one_request(base_url, api_key, model, max_tokens, timeout):
                 choices = obj.get("choices") or []
                 if not choices:
                     continue
-                piece = (choices[0].get("delta") or {}).get("content") or ""
+                delta = choices[0].get("delta") or {}
+                # Ollama's OpenAI-compatible endpoint streams chain-of-thought
+                # in a separate "reasoning" field, leaving "content" empty until
+                # the model stops thinking. Counting only content makes a
+                # thinking model look like it produced nothing at all.
+                piece = (delta.get("content") or "") + (delta.get("reasoning") or "")
                 if piece:
                     if ttft is None:
                         ttft = time.perf_counter() - start

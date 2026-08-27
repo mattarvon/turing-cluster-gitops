@@ -7,51 +7,102 @@ scrolling past in a terminal. Notable findings are written up here.
 
 ## LLM serving — 2026-08-27
 
-`qwen3.6-a3b` (Qwen3.6-35B-A3B, Q4_K_M, ~22 GB) through LiteLLM to Ollama on the
-RTX 5090. 256 max tokens, 2 reps per level, warm model.
+Through LiteLLM to Ollama on the RTX 5090 (32 GB). 256 max tokens, 2 reps,
+warm model. Direct-to-Ollama runs bypass the router to isolate where time goes.
 
-| Concurrency | TTFT p50 | Gen tok/s | **Aggregate tok/s** | Latency p50 | Latency max |
-|-------------|----------|-----------|---------------------|-------------|-------------|
-| 1 | 0.25 s | 229.5 | 187.4 | 1.4 s | 1.4 s |
-| 2 | 0.83 s | 225.9 | 200.9 | 2.0 s | 2.6 s |
-| 4 | 2.01 s | 227.5 | 209.0 | 3.1 s | 4.9 s |
+### The question: does the 5090 serve concurrent users?
 
-GPU during the run: **79 % peak utilisation, 274 W, 49 °C, 24.2 GB VRAM**.
+**For a 22 GB model, no — and no configuration fixes it.**
 
-### The finding: requests are serialised
+`qwen3.6-a3b` (Qwen3.6-35B-A3B, Q4_K_M, ~22 GB):
 
-Per-stream generation is flat at ~227 tok/s regardless of load, while TTFT grows
-almost linearly — 0.25 s → 0.83 s → 2.01 s — and aggregate throughput barely
-moves, up only 11 % going from one request to four.
+| Concurrency | TTFT p50 | Gen tok/s | Aggregate tok/s |
+|-------------|----------|-----------|-----------------|
+| 1 | 0.25 s | 229.5 | 187.4 |
+| 2 | 0.83 s | 225.9 | 200.9 |
+| 4 | 2.01 s | 227.5 | 209.0 |
 
-That is the signature of queueing, not parallelism. Each request runs at full
-speed *when it is its turn*, and waits the rest of the time. The cause is
-`OLLAMA_NUM_PARALLEL=1` on the workstation.
+Per-stream speed is flat while TTFT grows almost linearly and aggregate
+throughput gains only **11 %** from one request to four. That is queueing.
 
-### Why this matters
+`llama3.1:8b` (~4.9 GB), same harness, same card:
 
-The hardware is not the limit. At peak the card was at 79 % utilisation, 274 W
-against a 575 W board, and 49 °C — nowhere near thermal or power limits, with
-roughly 8 GB of VRAM unused.
+| Concurrency | TTFT p50 | Gen tok/s | Aggregate tok/s |
+|-------------|----------|-----------|-----------------|
+| 1 | 0.15 s | 224.5 | 198.2 |
+| 2 | 0.19 s | 190.1 | **331.3** |
+| 4 | 0.89 s | 189.1 | **348.2** |
 
-So a second concurrent user does not get a slower answer, they get the same
-answer later. For one person that is invisible. For two people, or an agent
-issuing parallel calls, it is the whole experience.
+Aggregate throughput up **67 %** at two concurrent requests, and TTFT barely
+moves — 0.15 s to 0.19 s, against Qwen's 0.25 s to 0.83 s. That is real
+parallelism.
 
-### Worth trying
+### Why: VRAM, not configuration
 
-Raise `OLLAMA_NUM_PARALLEL` to 2 and re-run. Each parallel slot needs its own KV
-cache, so VRAM is the constraint: ~8 GB spare against a 22 GB model suggests two
-slots is plausible and four is not. If aggregate throughput roughly doubles,
-that is a free doubling of serving capacity from a configuration change.
+`OLLAMA_NUM_PARALLEL=2` was set and confirmed active in the server config, and
+it changed the Qwen numbers not at all. The server log explains it — every
+request landed on `slot id 0`, because Ollama allocated **one slot**:
 
-Re-run with `CONCURRENCY=1,2,4 REPS=3` and compare against this table.
+```
+slot ... id  0 | task 4188 | new prompt, n_ctx_slot = 32768
+slot ... id  0 | task 4445 | new prompt, n_ctx_slot = 32768
+```
+
+The same test on `llama3.1:8b` used `id 0` **and** `id 1`. So the setting works;
+Ollama silently reduces the slot count when a second slot's KV cache will not
+fit. With 22 GB of weights in 32 GB of VRAM there is not enough room.
+
+Confirmed threshold: `gpt-oss:20b` (~13 GB) also gets two slots. Somewhere
+between 13 GB and 22 GB of weights, concurrency stops being possible on this
+card.
+
+Halving the context (`OLLAMA_CONTEXT_LENGTH=16384`) did **not** buy Qwen a
+second slot, so that setting was reverted — it cost context for nothing.
+
+### What this means in practice
+
+- **Big model, one user at a time.** A second person asking Qwen something does
+  not get a slower answer, they get the same answer later. At four concurrent
+  requests the wait before the first token is 2 s and climbing.
+- **Small models genuinely serve several users.** If concurrency matters more
+  than raw capability — an agent making parallel calls, more than one person —
+  `llama3.1:8b` or `gpt-oss:20b` is the better choice, and it is a routing
+  decision in the LiteLLM config, not a hardware problem.
+- **The hardware is not the limit for a single stream.** At peak the card ran at
+  79 % utilisation, 274 W against a 575 W board, and 49 °C. It is VRAM capacity
+  that constrains concurrency, not compute, power or thermals.
+
+### Settings left in place
+
+`OLLAMA_NUM_PARALLEL=2` (user environment variable on the workstation). It is
+strictly an improvement: models that fit two slots use them, and Ollama reduces
+to one by itself for models that do not. `OLLAMA_CONTEXT_LENGTH` was reverted to
+the automatic default.
+
+### Operational gotcha found along the way
+
+Stopping Ollama on Windows does **not** reap its `llama-server.exe` child
+processes. Five orphans accumulated across restarts, holding roughly 17 GB of
+VRAM while `ollama ps` reported a single 14 GB model loaded — which quietly
+pushed the next model to **59 % CPU / 41 % GPU** and destroyed its performance.
+
+If inference suddenly gets slow after restarts, check for orphans before
+anything else:
+
+```powershell
+Get-Process llama-server
+Stop-Process -Name "ollama app","ollama","llama-server" -Force
+```
 
 ### Caveats
 
-- Token counts are streamed-chunk counts, near enough to tokens for comparing
-  runs against each other, which is the point. Do not quote them as absolute.
+- Token counts are streamed-chunk counts. Fine for comparing runs against each
+  other, which is the point; do not quote them as absolute tokens/sec.
+- Ollama's OpenAI-compatible endpoint streams chain-of-thought in a separate
+  `reasoning` field with `content` empty. The harness counts both — an earlier
+  version counted only `content` and reported that a thinking model had
+  produced nothing at all.
 - Single prompt, single output length. Long-context behaviour is not measured
-  here and will be worse.
-- The warm-up request cost **13.9 s** — a cold 22 GB model load. With a 5 minute
-  keep-alive, the first request after an idle period pays that.
+  and will be worse.
+- Cold start for the 22 GB model is **~14 s**. With a 5 minute keep-alive, the
+  first request after an idle spell pays it.
