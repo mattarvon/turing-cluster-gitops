@@ -55,15 +55,18 @@ large model into VRAM takes tens of seconds and is not inference latency.
 ## 2 · Storage
 
 ```bash
-kubectl apply -f storage/fio-local-path.yaml
-kubectl apply -f storage/fio-nfs.yaml
-kubectl logs -n default job/fio-local-path -f
+./storage/run.sh rk1-w1              # both classes on one node
+./storage/run.sh zullx local-path    # a single class
 ```
 
 Same four profiles against each storage class: sequential read, sequential
-write, 4K random read, 4K random write. The question being answered is what NFS
-actually costs versus node-local disk, which decides whether replicated block
-storage is overdue or merely nice to have.
+write, 4K random read, 4K random write. The node is a parameter, because the
+answer turned out to **depend on which node you ask** — local NVMe wins
+decisively on x86 and loses to NFS on the ARM boards.
+
+Always measure both classes on the same node, or the comparison is between two
+different disks rather than between two storage classes. Running on the NFS
+server itself is a trap the script warns about: its "network" storage is local.
 
 Pay attention to **random 4K latency** rather than sequential throughput. That
 is what a VM disk and a database feel, and it is where network storage hurts.

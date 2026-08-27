@@ -148,16 +148,44 @@ sequential read and 57,200 random-read IOPS** — 8× the ARM node's random read
 Storage quality varies enormously across this fleet, and "local-path" means
 something completely different depending on which node a pod lands on.
 
+### Completing the matrix: the same test on x86
+
+Once zullx could mount NFS, the same run there finished the picture.
+
+| | rk1-w1 local | rk1-w1 NFS | **zullx local** | zullx NFS |
+|---|---:|---:|---:|---:|
+| Seq read | 310 MiB/s | 111 MiB/s | **543 MiB/s** | 111 MiB/s |
+| Seq write | 82 MiB/s | 112 MiB/s | **481 MiB/s** | 112 MiB/s |
+| Rand 4K read | 7,166 | 25,500 | **57,200** | 27,600 |
+| Rand 4K write | 5,288 | 1,907 | **48,400** | 1,890 |
+
+Two things fall out of it.
+
+**NFS performs identically from both nodes** — 111/112 MiB/s sequential, ~26–28 k
+random read, ~1.9 k random write, from an ARM node and an x86 one alike. That is
+the signature of a server-and-network limit rather than a client one. Nothing
+about the calling node changes NFS throughput, so there is no point choosing
+where to run a pod to make its NFS storage faster.
+
+**The local-vs-NFS answer inverts depending on architecture.** On zullx, local
+NVMe beats NFS on everything, by 5× sequential and **25× on random writes**. On
+rk1-w1, NFS wins random reads 3.6× and is far better on write tail latency. The
+right storage class is not a cluster-wide decision; it depends on which node the
+workload lands on.
+
 ### What to do with this
 
-- **Do not reflexively move things off NFS.** For workloads on ARM nodes it is
-  usually the faster option, and dramatically better for tail latency.
-- **`local-path` on an ARM node is a poor default** for anything write-heavy.
-  It is the cluster default, so this is easy to get by accident.
+- **On x86 nodes, prefer `local-path`** for anything performance-sensitive. The
+  NVMe there is dramatically faster than the network, and 48,400 random write
+  IOPS against NFS's 1,890 is not a close call.
+- **On ARM nodes, NFS is often the better choice** — faster random reads and far
+  better write tail latency than the local storage.
+- **Random writes over NFS are poor everywhere** (~1,900 IOPS regardless of
+  client). Anything write-heavy on NFS will feel it.
 - **The NFS argument is availability, not performance.** The single unreplicated
-  server remains the problem; its speed does not.
-- **Sequential NFS work is network-bound.** Faster disks in the NFS server would
-  change nothing without faster networking.
+  server remains the problem; its speed is fine for what it is.
+- **Sequential NFS work is network-bound** at gigabit line rate. Faster disks in
+  the NFS server would change nothing without faster networking.
 
 ### Related discovery: the VM has no failover target
 

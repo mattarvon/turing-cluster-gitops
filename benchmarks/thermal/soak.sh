@@ -16,7 +16,28 @@ set -uo pipefail
 NODE="${1:?usage: $0 <node> [minutes]}"
 MINUTES="${2:-20}"
 KEY="${SSH_KEY:-$HOME/.ssh/turing_ed25519}"
-USER_AT="${SSH_USER:-ubuntu}@${NODE}"
+
+# The login user is not uniform across this cluster: the ARM nodes and the NUC
+# use `ubuntu`, zullx uses `matt`. Guessing wrong just looks like a refused key.
+case "$NODE" in
+    zullx) DEFAULT_USER=matt ;;
+    *)     DEFAULT_USER=ubuntu ;;
+esac
+USER_AT="${SSH_USER:-$DEFAULT_USER}@${NODE}"
+
+# A node that has been reimaged presents a new SSH host key, which fails closed
+# and looks exactly like a permissions problem. Say so rather than leaving the
+# reader to guess.
+if ! ssh -o BatchMode=yes -o ConnectTimeout=6 -i "$KEY" "$USER_AT" true 2>/tmp/soak-ssh.err; then
+    if grep -qi 'host key verification failed' /tmp/soak-ssh.err; then
+        echo "Host key for $NODE has changed (reimaged?). Clear it and retry:" >&2
+        echo "    ssh-keygen -R $NODE" >&2
+    else
+        echo "Cannot SSH to $USER_AT:" >&2
+        tail -2 /tmp/soak-ssh.err >&2
+    fi
+    exit 1
+fi
 
 echo "=================================================="
 echo "thermal soak : $NODE for ${MINUTES} min"

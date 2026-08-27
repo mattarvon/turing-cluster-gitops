@@ -18,6 +18,7 @@ CONCURRENCY=${CONCURRENCY:-1,2,4}
 REPS=${REPS:-2}
 MAX_TOKENS=${MAX_TOKENS:-256}
 NODE_PORT=${NODE_PORT:-32500}
+GPU_HOST=${GPU_HOST:-192.168.1.110}   # workstation running the GPU exporter
 
 mkdir -p "$RESULTS"
 
@@ -45,7 +46,7 @@ echo "results     : $OUT"
 # Record what the GPU was doing beforehand - a benchmark run while something
 # else is using the card is not comparable to one on an idle card.
 if command -v curl >/dev/null; then
-    busy=$(curl -s --max-time 5 "http://192.168.1.110:9835/metrics" 2>/dev/null \
+    busy=$(curl -s --max-time 5 "http://${GPU_HOST:-192.168.1.110}:9835/metrics" 2>/dev/null \
            | grep -m1 '^nvidia_smi_utilization_gpu_ratio' | awk '{print $2}')
     echo "gpu busy before: ${busy:-unknown}"
 fi
