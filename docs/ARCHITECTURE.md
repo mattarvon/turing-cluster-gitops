@@ -123,13 +123,12 @@ traefik + traefik-crd (k3s built-in 40.1.x).
   `spec.workloads.nodePlacement` (kernel 4.9 has no `/dev/kvm`).
 - **desktop-vm** (ns `vms`): Ubuntu 24.04 XFCE + xrdp, pinned amd64 (NUC), NFS-backed 25 Gi disk,
   reached via **RDP 192.168.1.105:32389**.
-- **pentest** (ns `vms`, Argo app `pentest-vm`): disposable Kali 2026.2 with `kali-linux-headless`,
-  4 vCPU / 8 Gi, 40 Gi on the `longhorn-scratch` class (Longhorn, reclaim **Delete**), any amd64 node.
-  **SSH `<any node>:32222`**, keys only. It is a CDI clone of **kali-golden**, a VM that bakes the tool
-  set once and powers itself off. **Reset = `kubectl delete vm pentest -n vms`**; Argo selfHeal recreates
-  it from a fresh clone in ~2 min. Kali ships its cloud image as a tar.xz that CDI cannot unpack, so a
-  small **kali-image** Deployment converts it to qcow2 and serves it in-cluster. The app shows
-  *Suspended* health because the golden is stopped; that is expected.
+- **pentest** (ns `vms`, app `pentest-vm`): disposable Kali 2026.2, headless tools + XFCE, 4 vCPU / 8 Gi,
+  40 Gi `longhorn-scratch` (reclaim Delete), any amd64 node. **SSH `<node>:32222`** (keys),
+  **RDP `<node>:32390`** (password in Secret `pentest-rdp`). Clone of **kali-golden**, which bakes once
+  and powers off. **Reset: `kubectl delete vm pentest -n vms`**, ~2 min. Kali's cloud image is a tar.xz
+  CDI can't unpack; **kali-image** converts it to qcow2 in-cluster. App health reads Suspended because
+  the golden is off. That's expected.
 
 ## 8. Monitoring
 
