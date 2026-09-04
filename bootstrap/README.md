@@ -33,6 +33,9 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 kubectl create secret generic litellm-secrets -n ai \
     --from-literal=ANTHROPIC_API_KEY=... \
     --from-literal=LITELLM_MASTER_KEY=...
+# RDP login password for the disposable Kali VM (vms/pentest)
+kubectl create namespace vms
+kubectl create secret generic pentest-rdp -n vms --from-literal=password=...
 
 # 3. The app-of-apps root; Argo takes over from here
 kubectl apply -f bootstrap/root.yaml
