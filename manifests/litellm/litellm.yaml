@@ -37,9 +37,9 @@ data:
           think: false
       # ---- auto-routed local (the default in Open WebUI) ----
       # Heuristic classifier grades each prompt (length, code, reasoning cues)
-      # into a tier, no extra API call. Local only on purpose: nothing leaves
-      # the house unless you pick a claude-* model yourself. Which model won
-      # is in the x-litellm-model-id response header and a "cause=" log line.
+      # into a tier, no extra API call. Three tiers stay local; REASONING and
+      # the last-resort fallback go to Claude Sonnet (paid). Which model won
+      # is in the x-litellm-model-name response header.
       - model_name: local
         litellm_params:
           model: auto_router/complexity_router
@@ -49,7 +49,7 @@ data:
               SIMPLE: local-fast
               MEDIUM: local-chat
               COMPLEX: local-smart
-              REASONING: local-smart
+              REASONING: claude-sonnet   # the only tier that leaves the house
             classifier_type: heuristic
             # The heuristic under-grades code; a full pytest request scored
             # MEDIUM. Keyword rules are checked first and are deterministic.
@@ -63,6 +63,10 @@ data:
               - keywords: ["compare", "argue", "analyze", "analyse", "in detail", "pros and cons",
                            "trade-off", "tradeoff", "summarize", "summarise", "rewrite", "draft"]
                 tier: MEDIUM
+              # Explicit escalation to Claude. Say one of these and it goes out.
+              - keywords: ["think hard", "think carefully", "carefully", "prove", "step by step",
+                           "rigorous", "use claude", "ask claude"]
+                tier: REASONING
             session_affinity: false
             adaptive: false
           complexity_router_default_model: local-chat
@@ -94,6 +98,9 @@ data:
       fallbacks:
         - local-chat: [local-fast]
         - local-smart: [local-chat, local-fast]
+        # Last resort: workstation off (reboot, gaming), every local model is
+        # unreachable. Go to Anthropic rather than fail.
+        - local-fast: [claude-sonnet]
     router_settings:
       enable_pre_call_checks: true
 ---
