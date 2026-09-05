@@ -49,6 +49,11 @@ spec:
           nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
           replicaReplenishmentWaitInterval: 1800
           orphanAutoDeletion: true
+          # The CSI plugin DaemonSet and its sidecars are NOT placed by
+          # longhornDriver.nodeSelector below; Longhorn's manager creates them
+          # from this setting. Left empty, they land on the Jetson, which
+          # cannot reach any ClusterIP service, and crash-loop forever.
+          systemManagedComponentsNodeSelector: "longhorn.io/enabled:true"
 
         # WHERE REPLICAS LIVE and WHERE VOLUMES CAN BE MOUNTED are different
         # questions, and conflating them is a trap. Replica placement is already
@@ -83,7 +88,7 @@ spec:
         service:
           ui:
             type: NodePort
-            nodePort: 32800
+            nodePort: 32750   # k3s NodePort range ends at 32767; 32800 failed every sync
 
         # The dashboard is on the LAN with no auth in front of it. Fine here,
         # worth knowing.
