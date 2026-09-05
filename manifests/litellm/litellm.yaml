@@ -11,21 +11,29 @@ data:
   config.yaml: |
     model_list:
       # ---- local (Ollama on the RTX 5090) ----
-      - model_name: qwen3.6-a3b
+      # Aliases are ROLES, not model names. Swap the model underneath and nothing
+      # downstream changes. Always use library tags (name:tag) so `ollama pull`
+      # can refresh them; a custom tag never updates.
+      #
+      # local-fast   small, two parallel slots fit in VRAM, use for agents/concurrency
+      # local-chat   default; MoE, ~230 tok/s, one user at a time (22 GB, see benchmarks)
+      # local-smart  strongest local model; dense, slower, one user at a time
+      - model_name: local-fast
         litellm_params:
-          model: ollama_chat/qwen3.6-a3b
+          model: ollama_chat/gemma4:12b
           api_base: http://ollama.ai.svc.cluster.local:11434
-          # Qwen3.6 is a thinking model; without this its chain-of-thought leaks
+      - model_name: local-chat
+        litellm_params:
+          model: ollama_chat/qwen3.6:35b-a3b
+          api_base: http://ollama.ai.svc.cluster.local:11434
+          # Qwen3.x are thinking models; without this the chain-of-thought leaks
           # into the response body (no opening <think> tag) and reads as gibberish.
           think: false
-      - model_name: llama3.1-local
+      - model_name: local-smart
         litellm_params:
-          model: ollama/llama3.1:8b
+          model: ollama_chat/qwen3.8:27b
           api_base: http://ollama.ai.svc.cluster.local:11434
-      - model_name: gpt-oss-local
-        litellm_params:
-          model: ollama/gpt-oss:20b
-          api_base: http://ollama.ai.svc.cluster.local:11434
+          think: false
       # ---- Anthropic (Claude) ----
       - model_name: claude-opus
         litellm_params:

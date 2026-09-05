@@ -55,7 +55,7 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 | Device | Silicon | Specs | Purpose & capability |
 |--------|---------|-------|----------------------|
 | **Intel NUC** · `nuc-flasher` `.105` | Intel **i7-8559U** + Iris Plus 655 iGPU | 4c/8t · 31 GB RAM · ~931 GB + 465 GB SSD | The x86 workhorse: **amd64 K3s worker**, **NFS server** (458 GB RWX pool), **KubeVirt VM host**, and **Jetson flash host**. iGPU does QuickSync decode + OpenVINO. |
-| **Workstation** · `.110` | AMD **9800X3D** + **RTX 5090 (32 GB, Blackwell)** | 64 GB DDR5-6000 | **GPU-as-a-service**: runs Ollama on the LAN so the cluster gets local LLM inference (~208 tok/s on llama3.1:8b) without the rig being a node. Also the kubectl/admin box. |
+| **Workstation** · `.110` | AMD **9800X3D** + **RTX 5090 (32 GB, Blackwell)** | 64 GB DDR5-6000 | **GPU-as-a-service**: runs Ollama on the LAN so the cluster gets local LLM inference (~230 tok/s on qwen3.6:35b-a3b) without the rig being a node. Models: gemma4:12b, qwen3.6:35b-a3b, qwen3.8:27b, refreshed weekly by a scheduled task (`workstation/`). Also the kubectl/admin box. |
 | **Raspberry Pi 3** · `pihole` `.180` | BCM2837 (quad A53) | 1 GB · Debian 13 | **Pi-hole DNS — PRIMARY**. Network-wide ad/tracker blocking (~319k domains). |
 | **Raspberry Pi 3** · `pihole2` `.181` | BCM2837 (quad A53) | 1 GB · Debian 13 | **Pi-hole DNS — BACKUP**. Auto-synced from primary nightly (nebula-sync); DNS survives a Pi failure. |
 | **zullx** · `.216` | AMD **Ryzen 7 3700X** (8C/16T) + **RTX 2070 SUPER (8 GB)** | 62 GB RAM · 1 TB SATA (OS) + 1 TB NVMe | **x86 K3s GPU worker** — `nvidia.com/gpu` scheduling (CUDA/Stable Diffusion/TensorRT); its **M.2 NVMe** is the `nvme-local` StorageClass (fast PVCs). Ubuntu 24.04. |
