@@ -22,6 +22,7 @@ data:
         litellm_params:
           model: ollama_chat/gemma4:12b
           api_base: http://ollama.ai.svc.cluster.local:11434
+          think: false
       - model_name: local-chat
         litellm_params:
           model: ollama_chat/qwen3.6:35b-a3b
