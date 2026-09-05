@@ -60,6 +60,9 @@ data:
                            "yaml", "sql", "bash", "powershell", "terraform", "dockerfile",
                            "debug", "stack trace", "traceback", "refactor", "unit test"]
                 tier: COMPLEX
+              - keywords: ["compare", "argue", "analyze", "analyse", "in detail", "pros and cons",
+                           "trade-off", "tradeoff", "summarize", "summarise", "rewrite", "draft"]
+                tier: MEDIUM
             session_affinity: false
             adaptive: false
           complexity_router_default_model: local-chat
