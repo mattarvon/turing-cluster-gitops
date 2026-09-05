@@ -51,9 +51,15 @@ data:
               COMPLEX: local-smart
               REASONING: local-smart
             classifier_type: heuristic
+            # The heuristic under-grades code; a full pytest request scored
+            # MEDIUM. Keyword rules are checked first and are deterministic.
             keyword_tier_rules:
               - keywords: ["hi", "hello", "thanks", "thank you"]
                 tier: SIMPLE
+              - keywords: ["python", "function", "regex", "script", "kubernetes", "k8s",
+                           "yaml", "sql", "bash", "powershell", "terraform", "dockerfile",
+                           "debug", "stack trace", "traceback", "refactor", "unit test"]
+                tier: COMPLEX
             session_affinity: false
             adaptive: false
           complexity_router_default_model: local-chat
