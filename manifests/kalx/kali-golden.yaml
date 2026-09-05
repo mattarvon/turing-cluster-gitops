@@ -1,10 +1,10 @@
 # Golden Kali disk. Boots once, installs the tools and desktop, wipes cloud-init
-# state, powers off. Clone source for `pentest`. Baking takes 15-30 min; doing
+# state, powers off. Clone source for `kalx`. Baking takes 15-30 min; doing
 # it here instead of on every reset is the whole point.
 #
 # RerunOnFailure: starts on creation, stays off after the guest powers down.
 # Argo reports a stopped VM as Suspended, so this app shows Suspended forever.
-# Expected. Look at `pentest`, not the app.
+# Expected. Look at `kalx`, not the app.
 #
 # Rebake: kubectl delete vm kali-golden -n vms
 # 30Gi because the Kali raw disk is 25 GiB virtual and CDI wants headroom.

@@ -1,15 +1,15 @@
 # Disposable Kali box. Cloned from kali-golden-disk on creation.
 #
-# Reset:  kubectl delete vm pentest -n vms   (Argo recreates it, ~2 min)
+# Reset:  kubectl delete vm kalx -n vms   (Argo recreates it, ~2 min)
 # SSH:    ssh matt@<any node> -p 32222       keys only
 # RDP:    <any node>:32390                   user matt, password from Secret
 #
-# Password lives in Secret vms/pentest-rdp (key `password`), not here. It is
+# Password lives in Secret vms/kalx-rdp (key `password`), not here. It is
 # attached as a virtio disk and applied by cloud-init at boot. No Secret, no
 # boot. Change it:
-#   kubectl create secret generic pentest-rdp -n vms --from-literal=password=... \
+#   kubectl create secret generic kalx-rdp -n vms --from-literal=password=... \
 #     --dry-run=client -o yaml | kubectl apply -f -
-#   kubectl delete vm pentest -n vms
+#   kubectl delete vm kalx -n vms
 #
 # Don't `virtctl stop` it; selfHeal restarts it. Delete it or leave it.
 #
@@ -23,13 +23,13 @@
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
-  name: pentest
+  name: kalx
   namespace: vms
 spec:
   runStrategy: Always
   dataVolumeTemplates:
     - metadata:
-        name: pentest-disk
+        name: kalx-disk
       spec:
         source:
           pvc:
@@ -44,7 +44,7 @@ spec:
   template:
     metadata:
       labels:
-        kubevirt.io/vm: pentest
+        kubevirt.io/vm: kalx
     spec:
       architecture: amd64
       nodeSelector:
@@ -83,15 +83,15 @@ spec:
       volumes:
         - name: rootdisk
           dataVolume:
-            name: pentest-disk
+            name: kalx-disk
         - name: creds
           secret:
-            secretName: pentest-rdp
+            secretName: kalx-rdp
         - name: cloudinit
           cloudInitNoCloud:
             userData: |
               #cloud-config
-              hostname: pentest
+              hostname: kalx
               ssh_pwauth: false
               growpart:
                 mode: auto
@@ -114,12 +114,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: pentest-rdp
+  name: kalx-rdp
   namespace: vms
 spec:
   type: NodePort
   selector:
-    kubevirt.io/vm: pentest
+    kubevirt.io/vm: kalx
   ports:
     - name: rdp
       port: 3389
@@ -129,12 +129,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: pentest-ssh
+  name: kalx-ssh
   namespace: vms
 spec:
   type: NodePort
   selector:
-    kubevirt.io/vm: pentest
+    kubevirt.io/vm: kalx
   ports:
     - name: ssh
       port: 22

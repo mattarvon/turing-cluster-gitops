@@ -1,5 +1,5 @@
 # Same as the chart's `longhorn` class but reclaims with Delete. Retain would
-# leave a Released PV behind every time the pentest VM is reset. Opt in per PVC.
+# leave a Released PV behind every time the kalx VM is reset. Opt in per PVC.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:

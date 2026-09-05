@@ -64,7 +64,7 @@ on-board Gigabit switch with a single RJ45 uplink; the four modules share it.
 | **argocd** | argocd-server, repo-server, application-controller (STS), applicationset-controller, redis, dex, notifications | GitOps control plane — see §4 |
 | **monitoring** | prometheus (STS), grafana, alertmanager (STS), kube-state-metrics, kube-prometheus-operator, pihole-exporter, node-exporter (DS), process-exporter (DS) | kube-prometheus-stack 88.1.3 + tegrastats-exporter (systemd on Jetson) |
 | **ai** | open-webui (Deploy, on NUC) + selector-less `ollama` Service → .110 + **litellm** router (Deploy, on zullx) | LLM chat; LiteLLM routes to local Ollama + Anthropic Claude (one endpoint, NodePort 32500) |
-| **vms** | desktop-vm (KubeVirt VMI, on NUC) · **pentest** (disposable Kali VM, cloned from stopped **kali-golden**) · kali-image (Deploy, serves the Kali qcow2 to CDI) | Ubuntu XFCE desktop over RDP; throwaway Kali box over SSH |
+| **vms** | desktop-vm (KubeVirt VMI, on NUC) · **kalx** (disposable Kali VM, cloned from stopped **kali-golden**) · kali-image (Deploy, serves the Kali qcow2 to CDI) | Ubuntu XFCE desktop over RDP; throwaway Kali box over SSH |
 | **kubevirt** | virt-operator, virt-api, virt-controller, virt-exportproxy, virt-template-*, virt-handler (DS) | VM runtime; virt-handler excludes the Jetson (no /dev/kvm) |
 | **cdi** | cdi-operator, cdi-apiserver, cdi-deployment, cdi-uploadproxy | disk image import for VMs |
 | **nfs-provisioner** | nfs-subdir-external-provisioner | owns StorageClass `nfs-client` |
@@ -123,10 +123,10 @@ traefik + traefik-crd (k3s built-in 40.1.x).
   `spec.workloads.nodePlacement` (kernel 4.9 has no `/dev/kvm`).
 - **desktop-vm** (ns `vms`): Ubuntu 24.04 XFCE + xrdp, pinned amd64 (NUC), NFS-backed 25 Gi disk,
   reached via **RDP 192.168.1.105:32389**.
-- **pentest** (ns `vms`, app `pentest-vm`): disposable Kali 2026.2, headless tools + XFCE, 4 vCPU / 8 Gi,
+- **kalx** (ns `vms`, app `kalx`): disposable Kali 2026.2, headless tools + XFCE, 4 vCPU / 8 Gi,
   40 Gi `longhorn-scratch` (reclaim Delete), any amd64 node. **SSH `<node>:32222`** (keys),
-  **RDP `<node>:32390`** (password in Secret `pentest-rdp`). Clone of **kali-golden**, which bakes once
-  and powers off. **Reset: `kubectl delete vm pentest -n vms`**, ~2 min. Kali's cloud image is a tar.xz
+  **RDP `<node>:32390`** (password in Secret `kalx-rdp`). Clone of **kali-golden**, which bakes once
+  and powers off. **Reset: `kubectl delete vm kalx -n vms`**, ~2 min. Kali's cloud image is a tar.xz
   CDI can't unpack; **kali-image** converts it to qcow2 in-cluster. App health reads Suspended because
   the golden is off. That's expected.
 

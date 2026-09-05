@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: pentest-vm
+  name: kalx
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,18 +10,18 @@ spec:
   source:
     repoURL: git@github.com:mattarvon/turing-cluster-gitops.git
     targetRevision: main
-    path: manifests/pentest-vm
+    path: manifests/kalx
   destination:
     server: https://kubernetes.default.svc
     namespace: vms
   syncPolicy:
     automated:
       prune: true
-      selfHeal: true   # this is what makes `kubectl delete vm pentest` a reset
+      selfHeal: true   # this is what makes `kubectl delete vm kalx` a reset
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
-  # Needs the out-of-band Secret vms/pentest-rdp (key `password`). See bootstrap/README.md.
+  # Needs the out-of-band Secret vms/kalx-rdp (key `password`). See bootstrap/README.md.
   # KubeVirt's webhook stamps firmware serial/uuid and a PCI topology annotation; ignore them.
   ignoreDifferences:
     - group: kubevirt.io
