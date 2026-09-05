@@ -115,7 +115,7 @@ data:
 
     def _label(model: str) -> str:
         m = (model or "").replace("ollama_chat/", "").replace("ollama/", "").replace("anthropic/", "")
-        return f"\n\n<sub>— {m}</sub>"
+        return f"\n\n*— {m}*"
 
     def _wants_label(data: dict) -> bool:
         return str(data.get("model", "")).startswith("local")
@@ -182,7 +182,7 @@ spec:
       labels:
         app: litellm
       annotations:
-        checksum/config: "v4-model-label"
+        checksum/config: "v5-model-label-md"
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
