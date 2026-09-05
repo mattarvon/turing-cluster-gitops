@@ -88,6 +88,7 @@ data:
     litellm_settings:
       drop_params: true
       num_retries: 2
+      callbacks: model_label.proxy_handler_instance
       # The big models serve one user at a time (see benchmarks/results). If
       # local-chat or local-smart errors out or is still queued after
       # request_timeout, hand the request to gemma4 instead of making the
@@ -103,6 +104,66 @@ data:
         - local-fast: [claude-sonnet]
     router_settings:
       enable_pre_call_checks: true
+  # Proxy hook. Loaded via litellm_settings.callbacks; the proxy imports it
+  # from the config.yaml directory. Only labels requests to `local` and
+  # `local-*`, where the answering model is not what the user picked.
+  # Explicit claude-*/API clients are left untouched.
+  model_label.py: |
+    from typing import Any, AsyncGenerator
+    from litellm.integrations.custom_logger import CustomLogger
+    from litellm.types.utils import ModelResponseStream, StreamingChoices, Delta
+
+    def _label(model: str) -> str:
+        m = (model or "").replace("ollama_chat/", "").replace("ollama/", "").replace("anthropic/", "")
+        return f"\n\n<sub>— {m}</sub>"
+
+    def _wants_label(data: dict) -> bool:
+        return str(data.get("model", "")).startswith("local")
+
+    class ModelLabel(CustomLogger):
+        async def async_post_call_success_hook(self, data, user_api_key_dict, response):
+            try:
+                if not _wants_label(data):
+                    return response
+                choices = getattr(response, "choices", None)
+                if not choices:
+                    return response
+                msg = getattr(choices[0], "message", None)
+                if msg is not None and isinstance(getattr(msg, "content", None), str):
+                    msg.content = msg.content + _label(getattr(response, "model", ""))
+            except Exception:
+                pass
+            return response
+
+        async def async_post_call_streaming_iterator_hook(
+            self, user_api_key_dict, response: Any, request_data: dict
+        ) -> AsyncGenerator[ModelResponseStream, None]:
+            if not _wants_label(request_data):
+                async for item in response:
+                    yield item
+                return
+            model, last_id, injected = "", "", False
+            async for item in response:
+                try:
+                    model = getattr(item, "model", None) or model
+                    last_id = getattr(item, "id", None) or last_id
+                    ch = getattr(item, "choices", None)
+                    if not injected and ch and getattr(ch[0], "finish_reason", None):
+                        yield ModelResponseStream(
+                            id=last_id, model=model,
+                            choices=[StreamingChoices(index=0, delta=Delta(content=_label(model)), finish_reason=None)],
+                        )
+                        injected = True
+                except Exception:
+                    pass
+                yield item
+            if not injected and model:
+                yield ModelResponseStream(
+                    id=last_id, model=model,
+                    choices=[StreamingChoices(index=0, delta=Delta(content=_label(model)), finish_reason=None)],
+                )
+
+    proxy_handler_instance = ModelLabel()
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -121,7 +182,7 @@ spec:
       labels:
         app: litellm
       annotations:
-        checksum/config: "v3-qwen-nothink"
+        checksum/config: "v4-model-label"
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
