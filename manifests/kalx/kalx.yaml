@@ -16,10 +16,10 @@
 # Masquerade networking: LAN targets see the node IP (.105 or .216), not the
 # VM. Inbound needs a port under interfaces[].ports plus a Service.
 #
-# No sync-waves on either VM. Argo calls a stopped VM Suspended and waves only
-# pass Healthy, so any wave order between these two deadlocks. CDI does the
-# ordering: it won't clone a PVC another pod has mounted (CloneSourceInUse) and
-# waits for the golden to power off.
+# No sync-waves on either VM. CDI does the ordering: it won't clone a PVC
+# another pod has mounted (CloneSourceInUse) and waits for the golden to
+# power off. Argo health for the stopped golden is handled by
+# bootstrap/out-of-band/patch-argocd-vm-health.yaml.
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:

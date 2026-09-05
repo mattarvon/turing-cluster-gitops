@@ -1,0 +1,46 @@
+# Argo health check for KubeVirt VirtualMachine.
+#
+# Argo's built-in check calls a stopped VM "Suspended". kali-golden is MEANT to
+# be stopped (RerunOnFailure, powers off after baking), so every sync of the
+# kalx app hung on "waiting for healthy state of VirtualMachine/kali-golden"
+# and Services later in the same wave were never created. This says: stopped +
+# RerunOnFailure = Healthy. Everything else matches Argo's default.
+#
+# argocd-cm is Argo's own ConfigMap, installed out-of-band, so this lives here.
+# It is a PARTIAL ConfigMap: the apply script uses server-side apply for
+# patch-*.yaml so only this one key is owned. A plain `kubectl apply` would
+# wipe the other keys. Don't.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+data:
+  resource.customizations.health.kubevirt.io_VirtualMachine: |
+    local hs = { status = "Progressing", message = "No status" }
+    if obj.status == nil then return hs end
+    if obj.status.conditions ~= nil then
+      for _, c in ipairs(obj.status.conditions) do
+        if c.type == "Paused" and c.status == "True" then
+          hs.status = "Suspended"; hs.message = "Paused"; return hs
+        end
+      end
+    end
+    local ps = obj.status.printableStatus or ""
+    if ps == "Running" then
+      hs.status = "Healthy"; hs.message = "Running"; return hs
+    end
+    if ps == "Stopped" then
+      if obj.spec ~= nil and obj.spec.runStrategy == "RerunOnFailure" then
+        hs.status = "Healthy"; hs.message = "Stopped after guest power-off (RerunOnFailure)"
+      else
+        hs.status = "Suspended"; hs.message = "Stopped"
+      end
+      return hs
+    end
+    if ps == "ErrorUnschedulable" or ps == "ErrImagePull" or ps == "ImagePullBackOff"
+       or ps == "DataVolumeError" or ps == "ErrorPvcNotFound" then
+      hs.status = "Degraded"; hs.message = ps; return hs
+    end
+    if ps ~= "" then hs.message = ps end
+    return hs

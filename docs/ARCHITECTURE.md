@@ -127,8 +127,8 @@ traefik + traefik-crd (k3s built-in 40.1.x).
   40 Gi `longhorn-scratch` (reclaim Delete), any amd64 node. **SSH `<node>:32222`** (keys),
   **RDP `<node>:32390`** (password in Secret `kalx-rdp`). Clone of **kali-golden**, which bakes once
   and powers off. **Reset: `kubectl delete vm kalx -n vms`**, ~2 min. Kali's cloud image is a tar.xz
-  CDI can't unpack; **kali-image** converts it to qcow2 in-cluster. App health reads Suspended because
-  the golden is off. That's expected.
+  CDI can't unpack; **kali-image** converts it to qcow2 in-cluster.
+
 
 ## 8. Monitoring
 

@@ -25,7 +25,14 @@ if [ "$MODE" != "verify" ]; then
     say "==> Applying out-of-band resources"
     for f in "$DIR"/out-of-band/*.yaml; do
         say "    $(basename "$f")"
-        $KUBECTL apply -f "$f" || bad "could not apply $(basename "$f")"
+        case "$(basename "$f")" in
+            # Partial objects (one key of a ConfigMap Argo owns). Server-side
+            # apply owns only the fields in the file; client-side apply would
+            # strip every other key.
+            patch-*) $KUBECTL apply --server-side --field-manager=out-of-band -f "$f" \
+                        || bad "could not apply $(basename "$f")" ;;
+            *)       $KUBECTL apply -f "$f" || bad "could not apply $(basename "$f")" ;;
+        esac
     done
     say
 fi

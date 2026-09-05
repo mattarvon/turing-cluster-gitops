@@ -3,8 +3,9 @@
 # it here instead of on every reset is the whole point.
 #
 # RerunOnFailure: starts on creation, stays off after the guest powers down.
-# Argo reports a stopped VM as Suspended, so this app shows Suspended forever.
-# Expected. Look at `kalx`, not the app.
+# Argo would call that Suspended and hang every sync waiting for it; the
+# health override in bootstrap/out-of-band/patch-argocd-vm-health.yaml makes
+# stopped+RerunOnFailure Healthy. Without it the kalx app never finishes.
 #
 # Rebake: kubectl delete vm kali-golden -n vms
 # 30Gi because the Kali raw disk is 25 GiB virtual and CDI wants headroom.
