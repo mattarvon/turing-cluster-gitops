@@ -35,6 +35,28 @@ data:
           model: ollama_chat/qwen3.8:27b
           api_base: http://ollama.ai.svc.cluster.local:11434
           think: false
+      # ---- auto-routed local (the default in Open WebUI) ----
+      # Heuristic classifier grades each prompt (length, code, reasoning cues)
+      # into a tier, no extra API call. Local only on purpose: nothing leaves
+      # the house unless you pick a claude-* model yourself. Which model won
+      # is in the x-litellm-model-id response header and a "cause=" log line.
+      - model_name: local
+        litellm_params:
+          model: auto_router/complexity_router
+          drop_params: true
+          complexity_router_config:
+            tiers:
+              SIMPLE: local-fast
+              MEDIUM: local-chat
+              COMPLEX: local-smart
+              REASONING: local-smart
+            classifier_type: heuristic
+            keyword_tier_rules:
+              - keywords: ["hi", "hello", "thanks", "thank you"]
+                tier: SIMPLE
+            session_affinity: false
+            adaptive: false
+          complexity_router_default_model: local-chat
       # ---- Anthropic (Claude) ----
       - model_name: claude-opus
         litellm_params:
@@ -53,6 +75,18 @@ data:
     litellm_settings:
       drop_params: true
       num_retries: 2
+      # The big models serve one user at a time (see benchmarks/results). If
+      # local-chat or local-smart errors out or is still queued after
+      # request_timeout, hand the request to gemma4 instead of making the
+      # second user wait. Cooldown keeps us from hammering a busy backend.
+      request_timeout: 90
+      allowed_fails: 3
+      cooldown_time: 30
+      fallbacks:
+        - local-chat: [local-fast]
+        - local-smart: [local-chat, local-fast]
+    router_settings:
+      enable_pre_call_checks: true
 ---
 apiVersion: apps/v1
 kind: Deployment
