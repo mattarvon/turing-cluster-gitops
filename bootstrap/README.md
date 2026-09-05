@@ -42,6 +42,9 @@ kubectl apply -f bootstrap/root.yaml
 
 # 4. Everything Argo cannot manage, plus a verification pass
 ./bootstrap/apply-out-of-band.sh
+
+# 5. Jetson only: k3s must use its bundled iptables or kube-proxy is dead there
+kubectl apply -f bootstrap/out-of-band/fix-iptables-jetson.yaml
 ```
 
 ## Checking an existing cluster

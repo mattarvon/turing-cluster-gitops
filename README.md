@@ -93,6 +93,7 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 | Grafana | `192.168.1.101:32300` | Metrics dashboards |
 | Argo CD | `192.168.1.101:32700` | GitOps UI |
 | Headlamp | `192.168.1.101:32650` | Kubernetes UI |
+| Longhorn UI | `192.168.1.101:32750` | Replicated storage dashboard, no auth |
 | Kubernetes API | `192.168.1.101:6443` | `kubectl` |
 | Traefik ingress | `:32289` (web) / `:30145` (websecure) | Cluster ingress |
 

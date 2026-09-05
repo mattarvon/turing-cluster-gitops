@@ -1,0 +1,54 @@
+# One-shot: make k3s on the Jetson use its bundled iptables.
+#
+# Ubuntu 18.04 ships iptables 1.6.1. kube-proxy's MASQUERADE rule uses
+# --random-fully, which 1.6.1 does not know, so every iptables-restore fails
+# ("line 12 failed") and the Jetson has NO service NAT at all: pod-to-pod and
+# internet work, every ClusterIP (CoreDNS included) times out. Anything on the
+# Jetson that talks to a Service is dead. k3s bundles iptables 1.8.11 but
+# prefers the host binary unless told otherwise.
+#
+# Appends prefer-bundled-bin: true to /etc/rancher/k3s/config.yaml and
+# restarts k3s-agent. Running pods survive an agent restart. Idempotent.
+#
+#   kubectl apply -f bootstrap/out-of-band/fix-iptables-jetson.yaml
+#   kubectl logs -f fix-iptables-jetson
+#   kubectl delete pod fix-iptables-jetson
+#
+# Verify: "nat KUBE-SVC chains" in the log should be well above 0.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: fix-iptables-jetson
+  namespace: default
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: jetson-gpu
+  hostPID: true
+  containers:
+    - name: fixer
+      image: busybox:1.36
+      securityContext:
+        privileged: true
+      command:
+        - nsenter
+        - -t
+        - "1"
+        - -m
+        - -u
+        - -i
+        - -n
+        - -p
+        - --
+        - sh
+        - -c
+        - |
+          set -e
+          f=/etc/rancher/k3s/config.yaml
+          grep -q '^prefer-bundled-bin' $f 2>/dev/null || echo 'prefer-bundled-bin: true' >> $f
+          echo "--- $f ---"; cat $f
+          systemctl restart k3s-agent
+          sleep 45
+          echo "agent: $(systemctl is-active k3s-agent)"
+          echo "nat KUBE-SVC chains: $(iptables -t nat -S 2>/dev/null | grep -c '^-N KUBE-SVC')"
+          journalctl -u k3s-agent --since '-60s' --no-pager 2>&1 | grep -iE 'proxier|iptables' | tail -4 | cut -c1-200
