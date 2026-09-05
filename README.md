@@ -97,6 +97,24 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 | Kubernetes API | `192.168.1.101:6443` | `kubectl` |
 | Traefik ingress | `:32289` (web) / `:30145` (websecure) | Cluster ingress |
 
+### Static IPs
+
+Everything below is a fixed address (DHCP reservation on the AmpliFi or static on the host).
+
+| IP | Host | Web UI |
+|----|------|--------|
+| `192.168.1.1` | AmpliFi router | `http://192.168.1.1` |
+| `192.168.1.100` | Turing Pi 2 BMC | `https://192.168.1.100` |
+| `192.168.1.101` | rk1-cp (k3s control plane, all NodePorts above) | — |
+| `192.168.1.102` | jetson-gpu | — |
+| `192.168.1.103` | rk1-w1 | — |
+| `192.168.1.104` | rk1-w2 | — |
+| `192.168.1.105` | nuc-flasher (NFS, KubeVirt host) | — |
+| `192.168.1.110` | workstation (Ollama on the RTX 5090) | `http://192.168.1.110:11434` (API) |
+| `192.168.1.180` | pihole (primary DNS) | `http://192.168.1.180/admin` |
+| `192.168.1.181` | pihole2 (backup DNS) | `http://192.168.1.181/admin` |
+| `192.168.1.216` | zullx (x86 GPU worker, NVMe, Longhorn) | — |
+
 ---
 
 ## What it can do
