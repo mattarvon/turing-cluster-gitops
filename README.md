@@ -26,7 +26,7 @@ Credentials live only in the local build doc and are never committed here.
 - **Hybrid LLM router (LiteLLM)** — one OpenAI-compatible endpoint that routes between **local models** (Ollama on the 5090) and the **Anthropic API** (`claude-opus` / `sonnet` / `haiku`); pick local vs Claude per chat in Open WebUI, or point any tool at it. Keys live in-cluster, never in git.
 - **Schedulable Jetson GPU** — `nvidia.com/gpu` workloads (CUDA compute, raytracing, fractals) on the Tegra.
 - **`zullx` — x86 GPU worker node** — AMD **Ryzen 7 3700X** (8C/16T) · **62 GB RAM** · **RTX 2070 SUPER (8 GB)** · Ubuntu 24.04. Schedulable `nvidia.com/gpu` (CUDA / Stable Diffusion / TensorRT); its 1 TB M.2 NVMe is the **`nvme-local`** StorageClass (860 GB fast PVCs).
-- **Real VMs** — KubeVirt runs a full Linux desktop alongside containers, reachable over **RDP at `192.168.1.105:32389`**.
+- **Real VMs** — KubeVirt runs three: an Ubuntu XFCE desktop (RDP), a disposable Kali box (`kalx`, reset with one `kubectl delete`), and an Omarchy/Hyprland VM installed unattended from the ISO.
 - **Redundant DNS** — primary + backup Pi-hole, auto-synced nightly, LAN-wide ad-blocking.
 - **458 GB shared storage** — NFS RWX served from the NUC to the whole cluster.
 - **Full observability** — Prometheus, Grafana, Alertmanager, per-host + per-process + GPU metrics.
@@ -88,7 +88,7 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 |----------|---------|------|
 | **KubeVirt desktop VM** | **`192.168.1.105:32389`** (RDP) | Full Ubuntu XFCE desktop VM (ns `vms`) |
 | **Disposable Kali VM** | **`<node>:32222`** SSH · **`<node>:32390`** RDP | Pen-test box. `kubectl delete vm kalx -n vms` resets it. |
-| **Omarchy VM** | **`<node>:32223`** SSH · `virtctl vnc omarchy -n vms` | Arch + Hyprland, unattended install. `kubectl delete vm omarchy -n vms` reinstalls. |
+| **Omarchy VM** | **`<node>:32223`** SSH · VNC via `workstation/omarchy-vnc.ps1` then `localhost:5901` | Arch + Hyprland, unattended install. `kubectl delete vm omarchy -n vms` reinstalls. |
 | Open WebUI | `192.168.1.101:32400` | LLM chat — routes to local + Claude via LiteLLM |
 | LiteLLM (LLM router) | `192.168.1.101:32500` | One OpenAI endpoint → local Ollama + Anthropic Claude |
 | Grafana | `192.168.1.101:32300` | Metrics dashboards |

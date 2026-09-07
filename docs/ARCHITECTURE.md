@@ -4,7 +4,7 @@ Architecture-specific reference for **this** cluster: every component in the mix
 wired, and where it runs. Credentials are **not** in this repo — they live in the local
 `turing-cluster/turing-build-doc.md`.
 
-> Snapshot: 2026-08-08. Regenerate the topology with `dot -Tpng docs/topology.dot -o docs/topology.png -Gdpi=150`.
+> Snapshot: 2026-09-07. Regenerate the topology with `dot -Tpng docs/topology.dot -o docs/topology.png -Gdpi=150`.
 
 ## Topology
 
@@ -82,7 +82,11 @@ traefik + traefik-crd (k3s built-in 40.1.x).
   Applications) → `manifests/<app>/` (raw K8s YAML). `staged/` = declared-but-not-synced backlog.
 - **Under management now:** `gpu-device-plugin` (Jetson DaemonSet), `ollama-endpoint` (ai Service),
   `gpu-device-plugin-x86` (zullx NVIDIA plugin + RuntimeClass), `nvme-storage` (zullx `nvme-local` SC + PV),
-  `litellm` (LLM router → local Ollama + Anthropic Claude; keys in out-of-band Secret, not in git).
+  `litellm` (LLM router → local Ollama + Anthropic Claude; keys in out-of-band Secret, not in git),
+  `longhorn` (Helm, replicated storage on the two x86 nodes), `kalx` (disposable Kali VM + golden image),
+  `omarchy` (Arch/Hyprland VM), `gpu-workstation-exporter`.
+- **Out-of-band** (`bootstrap/`): Argo itself, Secrets, the Jetson iptables fix, and an argocd-cm patch
+  that makes a stopped `RerunOnFailure` VM count as Healthy (otherwise VM apps never finish syncing).
 - **Adoption backlog** (`staged/`): monitoring, nfs-provisioner, KubeVirt/CDI, open-webui,
   desktop-vm, pihole-exporter, tegrastats-exporter.
 
@@ -93,6 +97,8 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 | local-path (default) | rancher.io/local-path | per-node SSD | RWO |
 | nfs-client | nfs-subdir-external-provisioner | NUC .105 `/srv/nfs/k3s` (~458 GB) | RWX, Retain |
 | nvme-local | (static local PV, no-provisioner) | zullx .216 M.2 NVMe `/data` (860 GB) | RWO, Retain |
+| longhorn | driver.longhorn.io | 2 replicas across NUC + zullx (~900 GB each), UI :32750 | RWO, Retain |
+| longhorn-scratch | driver.longhorn.io | same, reclaim **Delete**; for throwaway VM disks | RWO, Delete |
 
 | PVC | Namespace | Class | Size |
 |-----|-----------|-------|------|
@@ -101,6 +107,8 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 | open-webui-data | ai | nfs-client | 5 Gi |
 | desktop-vm-disk | vms | nfs-client | 25 Gi |
 | big-nfs-pvc | default | nfs-client | 300 Gi (spare RWX) |
+| kali-golden-disk, kalx-disk | vms | longhorn-scratch | 30 Gi, 40 Gi |
+| omarchy-iso, omarchy-disk | vms | longhorn-scratch | 8 Gi, 40 Gi |
 
  NFS lives on a single disk in the NUC — shared, not replicated; the NUC is a SPOF for RWX volumes.
 
@@ -131,7 +139,8 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 - **omarchy** (ns `vms`, app `omarchy`): Omarchy 4.0.2 (Arch + Hyprland), UEFI, 4 vCPU / 8 Gi, 40 Gi
   `longhorn-scratch`, pinned to zullx. Installed **unattended** from the official ISO: KubeVirt turns
   Secret `omarchy-cidata` into a `cidata`-labelled disk the installer reads. **SSH `<node>:32223`**
-  (keys), desktop via `virtctl vnc omarchy -n vms` (software-rendered, no 3D in KubeVirt).
+  (keys), desktop via `workstation/omarchy-vnc.ps1` (virtctl VNC proxy on `localhost:5901`; connect
+  within 60 s or it exits). Software-rendered, no 3D in KubeVirt; GPU passthrough is the upgrade path.
   **Reset: `kubectl delete vm omarchy -n vms`** reinstalls in ~5 min. ISO kept as a standalone DV.
 
 
