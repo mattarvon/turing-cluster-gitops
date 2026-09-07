@@ -1,0 +1,121 @@
+# Omarchy (Arch + Hyprland) VM, installed unattended from the official ISO.
+#
+# Boot: UEFI, disk first, installer ISO second. First boot the empty disk
+# falls through to the ISO; the installer finds the `cidata` disk (KubeVirt
+# builds it from Secret vms/omarchy-cidata, label set below), installs with
+# nobody at the keyboard, reboots into the disk. ~5 min.
+#
+# Reset (reinstall from scratch):  kubectl delete vm omarchy -n vms
+# SSH:  ssh matt@<node> -p 32223     keys from the Secret's authorized_keys
+# Desktop: virtctl vnc omarchy -n vms   (software-rendered; no 3D in KubeVirt)
+#
+# Secret vms/omarchy-cidata is out-of-band (password hash + ssh key). Keys:
+# user_configuration.json user_credentials.json user_full_name.txt
+# user_email_address.txt user_encrypt_installation.txt authorized_keys
+# Format: omarchy.org/manual/unattended-installs
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: omarchy-iso
+  namespace: vms
+  annotations:
+    # Standalone, not a dataVolumeTemplate: survives VM resets, imported once.
+    cdi.kubevirt.io/storage.deleteAfterCompletion: "false"
+spec:
+  source:
+    http:
+      url: https://iso.omarchy.org/omarchy-4.0.2.iso
+  storage:
+    accessModes: [ReadWriteOnce]
+    resources:
+      requests:
+        storage: 8Gi
+    storageClassName: longhorn-scratch
+---
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: omarchy
+  namespace: vms
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+    - metadata:
+        name: omarchy-disk
+      spec:
+        source:
+          blank: {}
+        storage:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 40Gi
+          storageClassName: longhorn-scratch
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: omarchy
+    spec:
+      architecture: amd64
+      nodeSelector:
+        kubernetes.io/hostname: zullx
+      domain:
+        machine:
+          type: q35
+        firmware:
+          bootloader:
+            efi:
+              secureBoot: false
+        cpu:
+          cores: 4
+        memory:
+          guest: 8Gi
+        devices:
+          rng: {}
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: installer
+              bootOrder: 2
+              cdrom:
+                bus: sata
+            - name: cidata
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+              ports:
+                - name: ssh
+                  port: 22
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: omarchy-disk
+        - name: installer
+          dataVolume:
+            name: omarchy-iso
+        - name: cidata
+          secret:
+            secretName: omarchy-cidata
+            volumeLabel: cidata
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omarchy-ssh
+  namespace: vms
+spec:
+  type: NodePort
+  selector:
+    kubevirt.io/vm: omarchy
+  ports:
+    - name: ssh
+      port: 22
+      targetPort: 22
+      nodePort: 32223

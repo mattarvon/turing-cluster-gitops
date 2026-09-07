@@ -36,6 +36,8 @@ kubectl create secret generic litellm-secrets -n ai \
 # RDP login password for the disposable Kali VM (vms/kalx)
 kubectl create namespace vms
 kubectl create secret generic kalx-rdp -n vms --from-literal=password=...
+# Omarchy VM unattended-install files (see manifests/omarchy/omarchy.yaml for the key list)
+kubectl create secret generic omarchy-cidata -n vms --from-file=<dir with the six files>
 
 # 3. The app-of-apps root; Argo takes over from here
 kubectl apply -f bootstrap/root.yaml

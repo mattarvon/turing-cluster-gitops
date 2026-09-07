@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: omarchy
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:mattarvon/turing-cluster-gitops.git
+    targetRevision: main
+    path: manifests/omarchy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vms
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true   # `kubectl delete vm omarchy -n vms` = fresh reinstall
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  # Needs the out-of-band Secret vms/omarchy-cidata. See manifests/omarchy/omarchy.yaml.
+  ignoreDifferences:
+    - group: kubevirt.io
+      kind: VirtualMachine
+      jsonPointers:
+        - /spec/template/spec/domain/firmware/serial
+        - /spec/template/spec/domain/firmware/uuid
+        - /spec/template/metadata/annotations/kubevirt.io~1pci-topology-version
