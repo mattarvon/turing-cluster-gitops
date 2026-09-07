@@ -64,7 +64,7 @@ on-board Gigabit switch with a single RJ45 uplink; the four modules share it.
 | **argocd** | argocd-server, repo-server, application-controller (STS), applicationset-controller, redis, dex, notifications | GitOps control plane — see §4 |
 | **monitoring** | prometheus (STS), grafana, alertmanager (STS), kube-state-metrics, kube-prometheus-operator, pihole-exporter, node-exporter (DS), process-exporter (DS) | kube-prometheus-stack 88.1.3 + tegrastats-exporter (systemd on Jetson) |
 | **ai** | open-webui (Deploy, on NUC) + selector-less `ollama` Service → .110 + **litellm** router (Deploy, on zullx) | LLM chat; LiteLLM routes to local Ollama + Anthropic Claude (one endpoint, NodePort 32500). Local aliases by role: `local-fast` (gemma4:12b), `local-chat` (qwen3.6:35b-a3b), `local-smart` (qwen3.8:27b). `local` auto-routes per prompt (heuristic + keyword rules); hardest tier and last-resort fallback go to Claude Sonnet |
-| **vms** | desktop-vm (KubeVirt VMI, on NUC) · **kalx** (disposable Kali VM, cloned from stopped **kali-golden**) · kali-image (Deploy, serves the Kali qcow2 to CDI) | Ubuntu XFCE desktop over RDP; throwaway Kali box over SSH |
+| **vms** | desktop-vm (KubeVirt VMI, on NUC) · **kalx** (disposable Kali VM, cloned from stopped **kali-golden**) · kali-image (Deploy, serves the Kali qcow2 to CDI) · **omarchy** (Arch + Hyprland VM, on zullx) | Ubuntu XFCE desktop over RDP; throwaway Kali box over SSH; Omarchy over VNC console |
 | **kubevirt** | virt-operator, virt-api, virt-controller, virt-exportproxy, virt-template-*, virt-handler (DS) | VM runtime; virt-handler excludes the Jetson (no /dev/kvm) |
 | **cdi** | cdi-operator, cdi-apiserver, cdi-deployment, cdi-uploadproxy | disk image import for VMs |
 | **nfs-provisioner** | nfs-subdir-external-provisioner | owns StorageClass `nfs-client` |
@@ -128,6 +128,11 @@ traefik + traefik-crd (k3s built-in 40.1.x).
   **RDP `<node>:32390`** (password in Secret `kalx-rdp`). Clone of **kali-golden**, which bakes once
   and powers off. **Reset: `kubectl delete vm kalx -n vms`**, ~2 min. Kali's cloud image is a tar.xz
   CDI can't unpack; **kali-image** converts it to qcow2 in-cluster.
+- **omarchy** (ns `vms`, app `omarchy`): Omarchy 4.0.2 (Arch + Hyprland), UEFI, 4 vCPU / 8 Gi, 40 Gi
+  `longhorn-scratch`, pinned to zullx. Installed **unattended** from the official ISO: KubeVirt turns
+  Secret `omarchy-cidata` into a `cidata`-labelled disk the installer reads. **SSH `<node>:32223`**
+  (keys), desktop via `virtctl vnc omarchy -n vms` (software-rendered, no 3D in KubeVirt).
+  **Reset: `kubectl delete vm omarchy -n vms`** reinstalls in ~5 min. ISO kept as a standalone DV.
 
 
 ## 8. Monitoring
