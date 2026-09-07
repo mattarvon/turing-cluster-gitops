@@ -13,6 +13,13 @@
 # user_configuration.json user_credentials.json user_full_name.txt
 # user_email_address.txt user_encrypt_installation.txt authorized_keys
 # Format: omarchy.org/manual/unattended-installs
+#
+# TRAP: user_configuration.json carries absolute partition sizes. A "40Gi"
+# blank DataVolume on longhorn-scratch is NOT 40 GiB inside the guest; CDI
+# keeps filesystem headroom and the disk.img is 41958768640 bytes (39.08 GiB).
+# Sizing partitions for 40 GiB fails with "Partition overlaps backup GPT
+# header" and the installer drops to a shell. Sizes in the Secret assume
+# exactly that byte count: ESP 2 GiB at 1 MiB, root = rest minus 1 MiB.
 apiVersion: cdi.kubevirt.io/v1beta1
 kind: DataVolume
 metadata:
