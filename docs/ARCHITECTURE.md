@@ -139,7 +139,7 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 - **omarchy** (ns `vms`, app `omarchy`): Omarchy 4.0.2 (Arch + Hyprland), UEFI, 4 vCPU / 8 Gi, 40 Gi
   `longhorn-scratch`, pinned to zullx. Installed **unattended** from the official ISO: KubeVirt turns
   Secret `omarchy-cidata` into a `cidata`-labelled disk the installer reads. **SSH `<node>:32223`**
-  (keys), desktop via `workstation/omarchy-vnc.ps1` (virtctl VNC proxy on `localhost:5901`; connect
+  (keys), desktop via `workstation/omarchy-vnc.cmd` (virtctl VNC proxy on `localhost:5901`; connect
   within 60 s or it exits). Software-rendered, no 3D in KubeVirt; GPU passthrough is the upgrade path.
   **Reset: `kubectl delete vm omarchy -n vms`** reinstalls in ~5 min. ISO kept as a standalone DV.
 
