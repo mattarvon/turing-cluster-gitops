@@ -169,14 +169,23 @@ spec:
         kubernetes.io/arch: amd64
       containers:
         - name: novnc
-          image: theasp/novnc:latest
-          env:
-            - name: REMOTE_HOST
-              value: omarchy-vnc.vms.svc.cluster.local
-            - name: REMOTE_PORT
-              value: "5900"
+          # Plain websockify + the noVNC web UI. No desktop of its own; it only
+          # bridges browser WebSocket <-> the guest's wayvnc.
+          image: python:3.12-alpine
+          command:
+            - sh
+            - -ec
+            - |
+              pip install -q websockify==0.13.0
+              wget -qO- https://github.com/novnc/noVNC/archive/refs/tags/v1.7.0.tar.gz | tar xz -C /tmp
+              mv /tmp/noVNC-1.7.0 /novnc
+              exec websockify --web /novnc 8080 omarchy-vnc.vms.svc.cluster.local:5900
           ports:
             - containerPort: 8080
+          readinessProbe:
+            httpGet: {path: /vnc.html, port: 8080}
+            initialDelaySeconds: 20
+            periodSeconds: 10
           resources:
             requests: {cpu: 10m, memory: 32Mi}
             limits: {memory: 128Mi}
