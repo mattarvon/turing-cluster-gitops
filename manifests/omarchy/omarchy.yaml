@@ -148,7 +148,7 @@ spec:
       nodePort: 32391
 ---
 # Browser access: noVNC in front of the guest's wayvnc. No client needed.
-#   http://<node>:32392/vnc.html?autoconnect=1&resize=remote
+#   http://<node>:32392/vnc.html?autoconnect=1&resize=scale
 # websockify bridges the browser's WebSocket to omarchy-vnc:5900 in-cluster.
 apiVersion: apps/v1
 kind: Deployment
