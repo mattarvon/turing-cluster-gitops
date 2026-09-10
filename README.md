@@ -88,7 +88,7 @@ Reachable on any node IP (e.g. `.101`); remotely via the Tailscale subnet router
 |----------|---------|------|
 | **KubeVirt desktop VM** | **`192.168.1.105:32389`** (RDP) | Full Ubuntu XFCE desktop VM (ns `vms`) |
 | **Disposable Kali VM** | **`<node>:32222`** SSH · **`<node>:32390`** RDP | Pen-test box. `kubectl delete vm kalx -n vms` resets it. |
-| **Omarchy VM** | **`<node>:32223`** SSH · **`<node>:32391`** VNC | Arch + Hyprland, unattended install. `kubectl delete vm omarchy -n vms` reinstalls. |
+| **Omarchy VM** | **`http://192.168.1.216:32392/vnc.html?autoconnect=1&resize=remote`** (browser) · `<node>:32391` VNC · `<node>:32223` SSH | Arch + Hyprland, unattended install. `kubectl delete vm omarchy -n vms` reinstalls. |
 | Open WebUI | `192.168.1.101:32400` | LLM chat — routes to local + Claude via LiteLLM |
 | LiteLLM (LLM router) | `192.168.1.101:32500` | One OpenAI endpoint → local Ollama + Anthropic Claude |
 | Grafana | `192.168.1.101:32300` | Metrics dashboards |
