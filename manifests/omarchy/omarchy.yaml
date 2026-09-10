@@ -7,7 +7,10 @@
 #
 # Reset (reinstall from scratch):  kubectl delete vm omarchy -n vms
 # SSH:  ssh matt@<node> -p 32223     keys from the Secret's authorized_keys
-# Desktop: VNC to <node>:32391 (wayvnc in the guest; software-rendered, no 3D)
+# Desktop: browser http://<node>:32392/vnc.html?autoconnect=1&resize=scale (noVNC)
+#          or raw VNC <node>:32391. Boots straight to the desktop: SDDM autologin,
+#          Stay Awake on, idle lock/screensaver set to a day, display fixed 1080p.
+#          Super+Escape still locks by hand (password in the Secret).
 #
 # Secret vms/omarchy-cidata is out-of-band (password hash + ssh key). Keys:
 # user_configuration.json user_credentials.json user_full_name.txt
