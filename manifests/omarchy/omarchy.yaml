@@ -48,7 +48,7 @@ metadata:
   name: omarchy
   namespace: vms
 spec:
-  runStrategy: Halted
+  runStrategy: Always
   dataVolumeTemplates:
     - metadata:
         name: omarchy-disk
