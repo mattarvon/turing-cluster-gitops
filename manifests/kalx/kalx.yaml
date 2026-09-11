@@ -26,7 +26,7 @@ metadata:
   name: kalx
   namespace: vms
 spec:
-  runStrategy: Always
+  runStrategy: Halted
   dataVolumeTemplates:
     - metadata:
         name: kalx-disk
