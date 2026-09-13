@@ -97,15 +97,15 @@
     {
       "type": "timeseries",
       "title": "Temperature by node (hottest sensor)",
-      "description": "ARM modules throttle around 85C. On this hardware thermal headroom is usually the real ceiling, not CPU capacity.",
+      "description": "ARM modules throttle around 185F (85C). On this hardware thermal headroom is usually the real ceiling, not CPU capacity.",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "max by (instance) (node_hwmon_temp_celsius) * on(instance) group_left(nodename) node_uname_info", "legendFormat": "{{nodename}}", "refId": "A" }],
+      "targets": [{ "expr": "(max by (instance) (node_hwmon_temp_celsius) * on(instance) group_left(nodename) node_uname_info) * 9/5 + 32", "legendFormat": "{{nodename}}", "refId": "A" }],
       "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
-      "fieldConfig": { "defaults": { "unit": "celsius",
+      "fieldConfig": { "defaults": { "unit": "fahrenheit",
         "custom": { "lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "thresholdsStyle": { "mode": "dashed" } },
         "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "yellow", "value": 65 }, { "color": "orange", "value": 75 }, { "color": "red", "value": 85 } ] } }, "overrides": [] }
+          { "color": "green", "value": null }, { "color": "yellow", "value": 149 }, { "color": "orange", "value": 167 }, { "color": "red", "value": 185 } ] } }, "overrides": [] }
     },
     {
       "type": "timeseries",
@@ -222,11 +222,11 @@
       "title": "GPU temperature",
       "gridPos": { "h": 4, "w": 4, "x": 8, "y": 40 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "targets": [{ "expr": "nvidia_smi_temperature_gpu", "refId": "A" }],
+      "targets": [{ "expr": "nvidia_smi_temperature_gpu * 9/5 + 32", "refId": "A" }],
       "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } },
-      "fieldConfig": { "defaults": { "unit": "celsius", "noValue": "workstation offline",
+      "fieldConfig": { "defaults": { "unit": "fahrenheit", "noValue": "workstation offline",
         "thresholds": { "mode": "absolute", "steps": [
-          { "color": "green", "value": null }, { "color": "yellow", "value": 75 }, { "color": "red", "value": 84 } ] } }, "overrides": [] }
+          { "color": "green", "value": null }, { "color": "yellow", "value": 167 }, { "color": "red", "value": 183 } ] } }, "overrides": [] }
     },
     {
       "type": "stat",
@@ -275,7 +275,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
-        { "expr": "nvidia_smi_temperature_gpu", "legendFormat": "Temperature (C)", "refId": "A" },
+        { "expr": "nvidia_smi_temperature_gpu * 9/5 + 32", "legendFormat": "Temperature (C)", "refId": "A" },
         { "expr": "nvidia_smi_power_draw_watts", "legendFormat": "Power (W)", "refId": "B" }
       ],
       "options": { "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }, "tooltip": { "mode": "multi", "sort": "desc" } },
