@@ -17,6 +17,9 @@ spec:
     helm:
       releaseName: monitoring
       # valuesObject: {}   # <-- paste captured values here before adopting
+      # Live values now also carry prometheus.prometheusSpec.retentionSize=8GiB
+      # (set 2026-09-19, helm revision 4): the 15Gi local-path TSDB volume sits on
+      # rk1-w1's 29G eMMC and had pushed it to 86%, breaking kubelet image GC.
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

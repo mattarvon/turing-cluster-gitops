@@ -22,6 +22,16 @@ spec:
       #     defaultClass: false
       #     accessModes: ReadWriteMany
       #     reclaimPolicy: Retain
+      #   # Live since 2026-09-19 (helm upgrade --reuse-values): keep the provisioner
+      #   # off the Jetson, where pods cannot reach ClusterIP services.
+      #   affinity:
+      #     nodeAffinity:
+      #       requiredDuringSchedulingIgnoredDuringExecution:
+      #         nodeSelectorTerms:
+      #           - matchExpressions:
+      #               - key: gpu
+      #                 operator: NotIn
+      #                 values: ["true"]
   destination:
     server: https://kubernetes.default.svc
     namespace: nfs-provisioner

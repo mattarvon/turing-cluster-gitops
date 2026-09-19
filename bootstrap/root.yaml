@@ -24,3 +24,11 @@ spec:
       selfHeal: true
     syncOptions:
       - ApplyOutOfSyncOnly=true
+  # Argo CD adds pre-delete finalizers to child Applications whose charts carry
+  # pre-delete hooks (Longhorn does). They only ever exist live, so without this
+  # the root app reports that child OutOfSync forever.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jsonPointers:
+        - /metadata/finalizers
