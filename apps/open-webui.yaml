@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: open-webui
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:mattarvon/turing-cluster-gitops.git
+    targetRevision: main
+    path: manifests/open-webui
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+  # Needs the out-of-band Secret ai/litellm-secrets (LITELLM_MASTER_KEY) and the
+  # StorageClass longhorn-zullx from the nvme-storage app.

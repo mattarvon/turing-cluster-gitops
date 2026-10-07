@@ -1,0 +1,71 @@
+# Open WebUI: chat front-end for the LLM router. Talks to LiteLLM (ns ai) over the
+# OpenAI-compatible API; the LiteLLM master key comes from the out-of-band Secret
+# `litellm-secrets` (see bootstrap/README.md), never from this repo.
+# Pinned to zullx: its PVC is Longhorn with best-effort locality on zullx's NVMe.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+  namespace: ai
+  labels:
+    app: open-webui
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # single RWO volume: never run two pods at once
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: zullx
+      containers:
+        - name: open-webui
+          image: ghcr.io/open-webui/open-webui:main
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: WEBUI_AUTH
+              value: "True"
+            - name: ENABLE_PERSISTENT_CONFIG
+              value: "false"        # env vars win over values saved in the admin UI
+            - name: ENABLE_OLLAMA_API
+              value: "false"        # everything goes through LiteLLM
+            - name: OLLAMA_BASE_URL
+              value: http://ollama.ai.svc.cluster.local:11434
+            - name: ENABLE_OPENAI_API
+              value: "true"
+            - name: OPENAI_API_BASE_URL
+              value: http://litellm.ai.svc.cluster.local:4000/v1
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-secrets
+                  key: LITELLM_MASTER_KEY
+            - name: DEFAULT_MODELS
+              value: local
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: open-webui

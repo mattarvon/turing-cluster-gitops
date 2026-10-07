@@ -1,0 +1,13 @@
+# Open WebUI state: SQLite db, uploads, vector store. Replaced the NUC NFS volume
+# (nfs-client `open-webui-data`) on 2026-10-07; data was copied across while the app was stopped.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-webui
+  namespace: ai
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn-zullx
+  resources:
+    requests:
+      storage: 10Gi
