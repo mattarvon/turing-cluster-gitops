@@ -107,7 +107,7 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 | omarchy-iso, omarchy-disk | vms | longhorn-scratch | 8 Gi, 40 Gi |
 
  Longhorn keeps one replica of every volume on zullx (NVMe) and one on the NUC (SATA). The NUC going down
- degrades redundancy, not availability. The NUC NFS share (`nfs-client`) was retired on 2026-10-07.
+ degrades redundancy, not availability. The NUC NFS share (`nfs-client`, nfs-subdir-external-provisioner) was removed on 2026-10-07; its files remain on the NUC under `/srv/nfs/k3s` until that disk is repurposed.
 
 ## 6. GPU
 
