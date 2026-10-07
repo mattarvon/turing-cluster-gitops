@@ -32,7 +32,7 @@ The **Turing Pi 2 (v2.4)** carrier board holds 4 compute modules over an on-boar
 | jetson-gpu | 192.168.1.102 | N2 | NVIDIA Tegra186 Parker (2×Denver2 + 4×A57) | **256-core Pascal GPU, CC 6.2** | arm64 | 4 GB | **GPU worker** — CUDA compute, advertises `nvidia.com/gpu`; CUDA raytracer/fractal renders. |
 | rk1-w1 | 192.168.1.103 | N3 | Rockchip RK3588 (8-core) | 6-TOPS NPU (unused) | arm64 | 16 GB | General ARM64 worker. |
 | rk1-w2 | 192.168.1.104 | N4 | Rockchip RK3588 (8-core) | 6-TOPS NPU (unused) | arm64 | 16 GB | General ARM64 worker. |
-| nuc-flasher | 192.168.1.105 | ext | Intel i7-8559U (4c/8t) | Iris Plus 655 (QuickSync, OpenVINO) | amd64 | 31 GB | x86 worker · **NFS server** (458 GB RWX) · **KubeVirt VM host** · Jetson flash host. |
+| nuc-flasher | 192.168.1.105 | ext | Intel i7-8559U (4c/8t) | Iris Plus 655 (QuickSync, OpenVINO) | amd64 | 31 GB | x86 worker · **Longhorn replica disk** (465 GB SSD, ex-NFS) · **KubeVirt VM host** · Jetson flash host. |
 | zullx | 192.168.1.216 | ext | AMD Ryzen 7 3700X (8c/16t) | **RTX 2070 SUPER (8 GB, TU104)** | amd64 | 62 GB | **x86 GPU worker** — `nvidia.com/gpu` (CUDA/SD/TensorRT); 1 TB M.2 NVMe → `nvme-local` SC. Ubuntu 24.04 / kernel 6.8 (cgroup v2). |
 
 Off-cluster but part of the mix:
@@ -63,14 +63,13 @@ on-board Gigabit switch with a single RJ45 uplink; the four modules share it.
 |-----------|-----------|-------|
 | **argocd** | argocd-server, repo-server, application-controller (STS), applicationset-controller, redis, dex, notifications | GitOps control plane — see §4 |
 | **monitoring** | prometheus (STS), grafana, alertmanager (STS), kube-state-metrics, kube-prometheus-operator, pihole-exporter, node-exporter (DS), process-exporter (DS) | kube-prometheus-stack 88.1.3 + tegrastats-exporter (systemd on Jetson) |
-| **ai** | open-webui (Deploy, on NUC) + selector-less `ollama` Service → .110 + **litellm** router (Deploy, on zullx) | LLM chat; LiteLLM routes to local Ollama + Anthropic Claude (one endpoint, NodePort 32500). Local aliases by role: `local-fast` (gemma4:12b), `local-chat` (qwen3.6:35b-a3b), `local-smart` (qwen3.8:27b). `local` auto-routes per prompt (heuristic + keyword rules); hardest tier and last-resort fallback go to Claude Sonnet |
-| **vms** | desktop-vm (KubeVirt VMI, on NUC) · **kalx** (disposable Kali VM, cloned from stopped **kali-golden**) · kali-image (Deploy, serves the Kali qcow2 to CDI) · **omarchy** (Arch + Hyprland VM, on zullx) | Ubuntu XFCE desktop over RDP; throwaway Kali box over SSH; Omarchy over VNC console |
+| **ai** | open-webui (Deploy, on zullx, Longhorn PVC) + selector-less `ollama` Service → .110 + **litellm** router (Deploy, on zullx) | LLM chat; LiteLLM routes to local Ollama + Anthropic Claude (one endpoint, NodePort 32500). Local aliases by role: `local-fast` (gemma4:12b), `local-chat` (qwen3.6:35b-a3b), `local-smart` (qwen3.8:27b). `local` auto-routes per prompt (heuristic + keyword rules); hardest tier and last-resort fallback go to Claude Sonnet |
+| **vms** | **kalx** (disposable Kali VM, cloned from stopped **kali-golden**) · kali-image (Deploy, serves the Kali qcow2 to CDI) · **omarchy** (Arch + Hyprland VM, on zullx) | Ubuntu XFCE desktop over RDP; throwaway Kali box over SSH; Omarchy over VNC console |
 | **kubevirt** | virt-operator, virt-api, virt-controller, virt-exportproxy, virt-template-*, virt-handler (DS) | VM runtime; virt-handler excludes the Jetson (no /dev/kvm) |
 | **cdi** | cdi-operator, cdi-apiserver, cdi-deployment, cdi-uploadproxy | disk image import for VMs |
-| **nfs-provisioner** | nfs-subdir-external-provisioner | owns StorageClass `nfs-client` |
 | **kube-system** | traefik (ingress), coredns, metrics-server, local-path-provisioner, headlamp, **nvidia-gpu-device-plugin (DS)** | cluster services + GPU scheduling |
 
-**Helm-managed releases:** monitoring (kube-prometheus-stack 88.1.3), nfs-provisioner (4.0.18),
+**Helm-managed releases:** monitoring (kube-prometheus-stack 88.1.3),
 traefik + traefik-crd (k3s built-in 40.1.x).
 
 ## 4. GitOps (Argo CD) — this repo
@@ -83,34 +82,32 @@ traefik + traefik-crd (k3s built-in 40.1.x).
 - **Under management now:** `gpu-device-plugin` (Jetson DaemonSet), `ollama-endpoint` (ai Service),
   `gpu-device-plugin-x86` (zullx NVIDIA plugin + RuntimeClass), `nvme-storage` (zullx `nvme-local` SC + PV),
   `litellm` (LLM router → local Ollama + Anthropic Claude; keys in out-of-band Secret, not in git),
-  `longhorn` (Helm, replicated storage on the two x86 nodes), `kalx` (disposable Kali VM + golden image),
+  `longhorn` (Helm, replicated storage on the two x86 nodes), `open-webui` (chat front-end on zullx), `kalx` (disposable Kali VM + golden image),
   `omarchy` (Arch/Hyprland VM), `gpu-workstation-exporter`.
 - **Out-of-band** (`bootstrap/`): Argo itself, Secrets, the Jetson iptables fix, and an argocd-cm patch
   that makes a stopped `RerunOnFailure` VM count as Healthy (otherwise VM apps never finish syncing).
-- **Adoption backlog** (`staged/`): monitoring, nfs-provisioner, KubeVirt/CDI, open-webui,
-  desktop-vm, pihole-exporter, tegrastats-exporter.
+- **Adoption backlog** (`staged/`): monitoring, KubeVirt/CDI, pihole-exporter, tegrastats-exporter.
 
 ## 5. Storage
 
 | StorageClass | Provisioner | Backing | Modes |
 |--------------|-------------|---------|-------|
 | local-path (default) | rancher.io/local-path | per-node SSD | RWO |
-| nfs-client | nfs-subdir-external-provisioner | NUC .105 `/srv/nfs/k3s` (~458 GB) | RWX, Retain |
 | nvme-local | (static local PV, no-provisioner) | zullx .216 M.2 NVMe `/data` (860 GB) | RWO, Retain |
 | longhorn | driver.longhorn.io | 2 replicas across NUC + zullx (~900 GB each), UI :32750 | RWO, Retain |
 | longhorn-scratch | driver.longhorn.io | same, reclaim **Delete**; for throwaway VM disks | RWO, Delete |
+| longhorn-zullx | driver.longhorn.io | 2 replicas, **best-effort locality on zullx** (NVMe); for stateful services pinned to zullx | RWO, Retain |
 
 | PVC | Namespace | Class | Size |
 |-----|-----------|-------|------|
 | prometheus-db | monitoring | local-path | 15 Gi |
 | monitoring-grafana | monitoring | local-path | 4 Gi |
-| open-webui-data | ai | nfs-client | 5 Gi |
-| desktop-vm-disk | vms | nfs-client | 25 Gi |
-| big-nfs-pvc | default | nfs-client | 300 Gi (spare RWX) |
+| open-webui | ai | longhorn-zullx | 10 Gi |
 | kali-golden-disk, kalx-disk | vms | longhorn-scratch | 30 Gi, 40 Gi |
 | omarchy-iso, omarchy-disk | vms | longhorn-scratch | 8 Gi, 40 Gi |
 
- NFS lives on a single disk in the NUC — shared, not replicated; the NUC is a SPOF for RWX volumes.
+ Longhorn keeps one replica of every volume on zullx (NVMe) and one on the NUC (SATA). The NUC going down
+ degrades redundancy, not availability. The NUC NFS share (`nfs-client`) was retired on 2026-10-07.
 
 ## 6. GPU
 
@@ -122,15 +119,13 @@ traefik + traefik-crd (k3s built-in 40.1.x).
   TensorRT, bigger models than the Jetson. **GitOps-managed** (`gpu-device-plugin-x86`).
 - **RTX 5090 (GPU-as-a-service):** the workstation runs Ollama on the LAN; the cluster consumes it
   via the selector-less `ai/ollama` Service → `192.168.1.110:11434`. The rig is **not** a node
-  (decoupled from Windows reboots). Open WebUI (ns `ai`) is the front-end. **GitOps-managed** (Service).
+  (decoupled from Windows reboots). Open WebUI (ns `ai`) is the front-end, **GitOps-managed** (app `open-webui`, on zullx, Longhorn PVC).
 
 ## 7. Virtualization
 
 - **KubeVirt v1.9.0** (ns `kubevirt`) + **CDI v1.66.0** (ns `cdi`). `virt-handler` runs on
   KVM-capable nodes (RK1s + NUC) only — the Jetson is excluded via the `kubevirt` CR
   `spec.workloads.nodePlacement` (kernel 4.9 has no `/dev/kvm`).
-- **desktop-vm** (ns `vms`): Ubuntu 24.04 XFCE + xrdp, pinned amd64 (NUC), NFS-backed 25 Gi disk,
-  reached via **RDP 192.168.1.105:32389**.
 - **kalx** (ns `vms`, app `kalx`): disposable Kali 2026.2, headless tools + XFCE, 4 vCPU / 8 Gi,
   40 Gi `longhorn-scratch` (reclaim Delete), any amd64 node. **SSH `<node>:32222`** (keys),
   **RDP `<node>:32390`** (password in Secret `kalx-rdp`). Clone of **kali-golden**, which bakes once
@@ -166,7 +161,6 @@ built-in). Services are exposed via **NodePort** (reachable on any node IP, e.g.
 | Headlamp | 32650 |
 | Open WebUI | 32400 |
 | LiteLLM (LLM router) | 32500 |
-| desktop-vm (RDP) | 32389 |
 | Traefik ingress | 32289 (web) / 30145 (websecure) |
 
 ## 10. Component → node placement
@@ -174,7 +168,7 @@ built-in). Services are exposed via **NodePort** (reachable on any node IP, e.g.
 - **Control plane** on rk1-cp (.101).
 - **Heavy stateful pods** (Prometheus, Grafana, Alertmanager) kept **off** the 4 GB Jetson via
   nodeAffinity (`gpu NotIn true`).
-- **amd64-only / VM / NFS-consuming workloads** (open-webui, desktop-vm) pinned to the **NUC**.
+- **Open WebUI and the VMs** are pinned to **zullx** so their Longhorn replica is local (NVMe).
 - **GPU workloads** land on the **Jetson** (`nvidia.com/gpu`).
 - **DaemonSets** (node-exporter, process-exporter, device-plugin, virt-handler) span the
   appropriate node sets.

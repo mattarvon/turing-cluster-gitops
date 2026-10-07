@@ -15,10 +15,8 @@ into GitOps one at a time — safely, after verifying the desired manifest match
 | App | Type | Namespace | Notes |
 |-----|------|-----------|-------|
 | monitoring (kube-prometheus-stack 88.1.3) | Helm | monitoring | capture values; Grafana admin pw stays an in-cluster Secret (do NOT commit) |
-| nfs-subdir-external-provisioner 4.0.18 | Helm | nfs-provisioner | set NFS server .105 + path in values |
+| nfs-subdir-external-provisioner 4.0.18 | Helm | nfs-provisioner | **being retired** (2026-10-07): Open WebUI moved to Longhorn on zullx; uninstall, do not adopt |
 | KubeVirt v1.9.0 + CDI v1.66.0 | raw/operator | kubevirt / cdi | CRs carry `workloads` AND (since 2026-09-19) `infra` nodePlacement excluding the Jetson (gpu=true); the `cdi-operator` Deployment has the same affinity patched directly (the CR does not govern the operator) — capture all three |
-| open-webui | raw | ai | has a PVC + WEBUI_SECRET_KEY Secret — keep secret out of git |
-| desktop-vm (KubeVirt VM) | raw | vms | cloud-init contains a lab password; commit only if acceptable |
 | pihole-exporter | raw | monitoring | needs Pi-hole password Secret — use Sealed Secrets before committing |
 | tegrastats-exporter | raw | monitoring | Jetson GPU metrics; safe to codify (no secret) |
 | **tailscale-subnet-router** | raw | tailscale | **Remote access** — advertises 192.168.1.0/24 onto the tailnet. Needs `tailscale-auth` secret (out-of-band); see `tailscale-subnet-router.yaml` header for activation. |

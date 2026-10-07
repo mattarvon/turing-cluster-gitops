@@ -28,7 +28,7 @@ Credentials live only in the local build doc and are never committed here.
 - **`zullx` — x86 GPU worker node** — AMD **Ryzen 7 3700X** (8C/16T) · **62 GB RAM** · **RTX 2070 SUPER (8 GB)** · Ubuntu 24.04. Schedulable `nvidia.com/gpu` (CUDA / Stable Diffusion / TensorRT); its 1 TB M.2 NVMe is the **`nvme-local`** StorageClass (860 GB fast PVCs).
 - **Real VMs** — KubeVirt runs three: an Ubuntu XFCE desktop (RDP), a disposable Kali box (`kalx`, reset with one `kubectl delete`), and an Omarchy/Hyprland VM installed unattended from the ISO.
 - **Redundant DNS** — primary + backup Pi-hole, auto-synced nightly, LAN-wide ad-blocking.
-- **458 GB shared storage** — NFS RWX served from the NUC to the whole cluster.
+- **Replicated storage** — Longhorn across the two x86 nodes; stateful services keep a replica on zullx's NVMe and survive the NUC going down.
 - **Full observability** — Prometheus, Grafana, Alertmanager, per-host + per-process + GPU metrics.
 
 ![Cluster topology](docs/topology.png)
@@ -54,7 +54,7 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 
 | Device | Silicon | Specs | Purpose & capability |
 |--------|---------|-------|----------------------|
-| **Intel NUC** · `nuc-flasher` `.105` | Intel **i7-8559U** + Iris Plus 655 iGPU | 4c/8t · 31 GB RAM · ~931 GB + 465 GB SSD | The x86 workhorse: **amd64 K3s worker**, **NFS server** (458 GB RWX pool), **KubeVirt VM host**, and **Jetson flash host**. iGPU does QuickSync decode + OpenVINO. |
+| **Intel NUC** · `nuc-flasher` `.105` | Intel **i7-8559U** + Iris Plus 655 iGPU | 4c/8t · 31 GB RAM · ~931 GB + 465 GB SSD | The x86 workhorse: **amd64 K3s worker**, **second Longhorn replica** (465 GB SSD), **KubeVirt VM host**, and **Jetson flash host**. iGPU does QuickSync decode + OpenVINO. |
 | **Workstation** · `.110` | AMD **9800X3D** + **RTX 5090 (32 GB, Blackwell)** | 64 GB DDR5-6000 | **GPU-as-a-service**: runs Ollama on the LAN so the cluster gets local LLM inference (~230 tok/s on qwen3.6:35b-a3b) without the rig being a node. Models: gemma4:12b, qwen3.6:35b-a3b, qwen3.8:27b, refreshed weekly by a scheduled task (`workstation/`). Also the kubectl/admin box. |
 | **Raspberry Pi 3** · `pihole` `.180` | BCM2837 (quad A53) | 1 GB · Debian 13 | **Pi-hole DNS — PRIMARY**. Network-wide ad/tracker blocking (~319k domains). |
 | **Raspberry Pi 3** · `pihole2` `.181` | BCM2837 (quad A53) | 1 GB · Debian 13 | **Pi-hole DNS — BACKUP**. Auto-synced from primary nightly (nebula-sync); DNS survives a Pi failure. |
@@ -70,7 +70,7 @@ switch (single RJ45 uplink), and a **BMC** (baseboard management controller) for
 | **Orchestration** | K3s v1.36.2 (Jetson on v1.34.9 — kernel 4.9 / cgroup v1) |
 | **GitOps** | Argo CD (app-of-apps) — this repo is the source of truth |
 | **Ingress** | Traefik (k3s built-in) + NodePort services |
-| **Storage** | local-path (per-node SSD) + `nfs-client` RWX (NFS from the NUC, ~458 GB) |
+| **Storage** | local-path (per-node SSD) + Longhorn (2 replicas: zullx NVMe + NUC SSD) + `nvme-local` (860 GB static) |
 | **GPU scheduling** | `nvidia.com/gpu` — squat generic-device-plugin (Jetson) + official NVIDIA device plugin (zullx, RTX 2070 SUPER) |
 | **AI / LLM** | Ollama on the RTX 5090 + Open WebUI + **LiteLLM router** (local + Anthropic Claude in one endpoint) (ns `ai`) |
 | **Virtualization** | KubeVirt + CDI — full VMs (ns `kubevirt`/`cdi`/`vms`) |
@@ -110,7 +110,7 @@ Everything below is a fixed address (DHCP reservation on the AmpliFi or static o
 | `192.168.1.102` | jetson-gpu | — |
 | `192.168.1.103` | rk1-w1 | — |
 | `192.168.1.104` | rk1-w2 | — |
-| `192.168.1.105` | nuc-flasher (NFS, KubeVirt host) | — |
+| `192.168.1.105` | nuc-flasher (KubeVirt host, Longhorn replica) | — |
 | `192.168.1.110` | workstation (Ollama on the RTX 5090) | `http://192.168.1.110:11434` (API) |
 | `192.168.1.180` | pihole (primary DNS) | `http://192.168.1.180/admin` |
 | `192.168.1.181` | pihole2 (backup DNS) | `http://192.168.1.181/admin` |
@@ -121,7 +121,7 @@ Everything below is a fixed address (DHCP reservation on the AmpliFi or static o
 ## What it can do
 
 - **Run local LLMs** — chat via Open WebUI, backed by the 5090; models on demand via Ollama.
-- **Run VMs next to containers** — a full XFCE Linux desktop over RDP, disk on shared NFS.
+- **Run VMs next to containers** — Kali and Omarchy desktops with disks on Longhorn (zullx NVMe).
 - **GPU compute on the edge** — schedule CUDA jobs on the Jetson (see the raytracer/fractal renderer).
 - **Serve & protect the whole LAN** — redundant ad-blocking DNS that fails over automatically.
 - **See everything** — btop-style per-host, per-process, and GPU/thermal metrics in Grafana.
@@ -140,7 +140,7 @@ Everything below is a fixed address (DHCP reservation on the AmpliFi or static o
 - **6** nodes · **2** CPU architectures (arm64 + amd64)
 - **~42** CPU cores · **~145 GB** cluster RAM
 - **3** GPUs in play (RTX 5090 as a service + Jetson Pascal + **RTX 2070 SUPER on zullx**) · **3× 6-TOPS NPUs** aboard the RK1s
-- **458 GB** RWX NFS **+ 860 GB** fast NVMe (`nvme-local`) · **9** namespaces
+- **~900 GB** Longhorn (2 replicas) **+ 860 GB** fast NVMe (`nvme-local`) · **9** namespaces
 - **7** always-on services exposed (Argo CD, Grafana, Headlamp, Open WebUI, RDP, Traefik web/websecure)
 
 ---
