@@ -18,6 +18,9 @@ data:
       # local-fast   small, two parallel slots fit in VRAM, use for agents/concurrency
       # local-chat   default; MoE, ~230 tok/s, one user at a time (22 GB, see benchmarks)
       # local-smart  strongest local model; dense, slower, one user at a time
+      # local-agent  tool calling, screenshots/charts/documents; ~58 tok/s, 18.5 GB.
+      #              Not a complexity tier: model_label.py sends `local` requests
+      #              that carry tools or images here (see the pre-call hook).
       - model_name: local-fast
         litellm_params:
           model: ollama_chat/gemma4:12b
@@ -35,11 +38,20 @@ data:
           model: ollama_chat/qwen3.8:27b
           api_base: http://ollama.ai.svc.cluster.local:11434
           think: false
+      - model_name: local-agent
+        litellm_params:
+          model: ollama_chat/muse-glimmer:30b
+          api_base: http://ollama.ai.svc.cluster.local:11434
+          # Muse still spends 45-185 hidden tokens before answering with
+          # thinking off; it does not leak into the response body.
+          think: false
       # ---- auto-routed local (the default in Open WebUI) ----
-      # Heuristic classifier grades each prompt (length, code, reasoning cues)
-      # into a tier, no extra API call. Three tiers stay local; REASONING and
-      # the last-resort fallback go to Claude Sonnet (paid). Which model won
-      # is in the x-litellm-model-name response header.
+      # Step 1, model_label.py pre-call hook: a `local` request that carries
+      # tool definitions or images, or says "use muse", goes to local-agent.
+      # Step 2, everything else: heuristic classifier grades each prompt
+      # (length, code, reasoning cues) into a tier, no extra API call. Three
+      # tiers stay local; REASONING and the last-resort fallback go to Claude
+      # Sonnet (paid). Which model won is in the x-litellm-model-name header.
       - model_name: local
         litellm_params:
           model: auto_router/complexity_router
@@ -99,15 +111,19 @@ data:
       fallbacks:
         - local-chat: [local-fast]
         - local-smart: [local-chat, local-fast]
+        - local-agent: [local-chat, local-fast]
         # Last resort: workstation off (reboot, gaming), every local model is
         # unreachable. Go to Anthropic rather than fail.
         - local-fast: [claude-sonnet]
     router_settings:
       enable_pre_call_checks: true
   # Proxy hook. Loaded via litellm_settings.callbacks; the proxy imports it
-  # from the config.yaml directory. Only labels requests to `local` and
-  # `local-*`, where the answering model is not what the user picked.
-  # Explicit claude-*/API clients are left untouched.
+  # from the config.yaml directory. Two jobs:
+  # 1. Pre-call: reroute `local` requests that need an agent model (tool
+  #    definitions, image input, or "use muse") to local-agent, before the
+  #    complexity router sees them. The router's four tiers are fixed.
+  # 2. Post-call: label replies to `local` and `local-*` with the model that
+  #    answered. Explicit claude-*/API clients are left untouched.
   model_label.py: |
     from typing import Any, AsyncGenerator
     from litellm.integrations.custom_logger import CustomLogger
@@ -120,7 +136,54 @@ data:
     def _wants_label(data: dict) -> bool:
         return str(data.get("model", "")).startswith("local")
 
+    AGENT_KEYWORDS = ("use muse", "ask muse")
+
+    def _has_image(messages) -> bool:
+        for msg in messages or []:
+            content = msg.get("content") if isinstance(msg, dict) else None
+            if isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") in ("image_url", "image", "input_image"):
+                        return True
+            if isinstance(msg, dict) and msg.get("images"):
+                return True
+        return False
+
+    def _last_user_text(messages) -> str:
+        for msg in reversed(messages or []):
+            if isinstance(msg, dict) and msg.get("role") == "user":
+                content = msg.get("content")
+                if isinstance(content, str):
+                    return content.lower()
+                if isinstance(content, list):
+                    return " ".join(p.get("text", "") for p in content if isinstance(p, dict)).lower()
+        return ""
+
+    def _agent_reason(data: dict) -> str:
+        if data.get("tools") or data.get("functions"):
+            return "tools"
+        messages = data.get("messages")
+        if _has_image(messages):
+            return "image"
+        text = _last_user_text(messages)
+        if any(k in text for k in AGENT_KEYWORDS):
+            return "keyword"
+        return ""
+
     class ModelLabel(CustomLogger):
+        async def async_pre_call_hook(self, user_api_key_dict, cache, data, call_type):
+            try:
+                if data.get("model") == "local":
+                    reason = _agent_reason(data)
+                    if reason:
+                        data["model"] = "local-agent"
+                        meta = data.setdefault("metadata", {})
+                        if isinstance(meta, dict):
+                            meta["local_agent_reason"] = reason
+            except Exception:
+                pass
+            return data
+
         async def async_post_call_success_hook(self, data, user_api_key_dict, response):
             try:
                 if not _wants_label(data):
@@ -129,6 +192,9 @@ data:
                 if not choices:
                     return response
                 msg = getattr(choices[0], "message", None)
+                # Leave tool-call replies untouched; agent clients parse them.
+                if msg is not None and getattr(msg, "tool_calls", None):
+                    return response
                 if msg is not None and isinstance(getattr(msg, "content", None), str):
                     msg.content = msg.content + _label(getattr(response, "model", ""))
             except Exception:
@@ -142,13 +208,15 @@ data:
                 async for item in response:
                     yield item
                 return
-            model, last_id, injected = "", "", False
+            model, last_id, injected, tools = "", "", False, False
             async for item in response:
                 try:
                     model = getattr(item, "model", None) or model
                     last_id = getattr(item, "id", None) or last_id
                     ch = getattr(item, "choices", None)
-                    if not injected and ch and getattr(ch[0], "finish_reason", None):
+                    if ch and getattr(getattr(ch[0], "delta", None), "tool_calls", None):
+                        tools = True
+                    if not injected and not tools and ch and getattr(ch[0], "finish_reason", None):
                         yield ModelResponseStream(
                             id=last_id, model=model,
                             choices=[StreamingChoices(index=0, delta=Delta(content=_label(model)), finish_reason=None)],
@@ -157,7 +225,7 @@ data:
                 except Exception:
                     pass
                 yield item
-            if not injected and model:
+            if not injected and not tools and model:
                 yield ModelResponseStream(
                     id=last_id, model=model,
                     choices=[StreamingChoices(index=0, delta=Delta(content=_label(model)), finish_reason=None)],
@@ -182,7 +250,7 @@ spec:
       labels:
         app: litellm
       annotations:
-        checksum/config: "v5-model-label-md"
+        checksum/config: "v6-local-agent"
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
