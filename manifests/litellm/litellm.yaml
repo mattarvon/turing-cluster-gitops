@@ -250,13 +250,17 @@ spec:
       labels:
         app: litellm
       annotations:
-        checksum/config: "v6-local-agent"
+        checksum/config: "v7-pin-1.96.2"
     spec:
       nodeSelector:
         kubernetes.io/arch: amd64
       containers:
         - name: litellm
-          image: ghcr.io/berriai/litellm:main-stable
+          # Pinned to the digest of LiteLLM 1.96.2. The floating main-stable tag
+          # pulled 1.105.1 on a restart (2026-10-14), and 1.105.1 shifts the
+          # complexity_router tiers by one ("hi" went to Claude Sonnet).
+          # Test the router (tier probe) before moving this pin.
+          image: ghcr.io/berriai/litellm:main-stable@sha256:154e23bb5f31b1f10e16392a8ef299bd2cde08de3a64a6849002cfcc25ce3c63
           args: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
           ports:
             - containerPort: 4000
